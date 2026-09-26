@@ -1,1669 +1,504 @@
 # Cover Shuffle — Claude Engineering Rules
 
-> **This file is mandatory project guidance. Read it completely before making changes.**
->
-> This repository is an existing Playnite extension. The codebase is not a blank
-> project and must not be treated as one. The existing implementation is the
-> source of truth for what already works.
-
----
+> Mandatory project guidance. This is an existing, working extension — not a
+> blank project. The existing implementation is the source of truth.
 
 ## 1. Project Identity
 
-**Repository:** `Kyerstorm/Cover-Swapper`
+- **Repo**: `Kyerstorm/Cover-Swapper` · **Product**: Cover Shuffle
+- **Assembly/Namespace**: `PluginCoverShuffle` · **Target**: Playnite Desktop
+- **Framework**: `net462` · **UI**: WPF · **Version**: `1.3.0`
 
-**Product:** Cover Shuffle
+Lets users maintain up to 10 alternate covers per game and rotate the
+Playnite cover manually, on a schedule, or on game launch. Sources: local
+files, SteamGridDB, existing Playnite metadata/artwork. The plugin owns
+copies of managed artwork and retains enough info to restore the original.
 
-**Assembly:** `PluginCoverShuffle`
+## 2. Existing-Repository Rule — Highest Priority
 
-**Namespace:** `PluginCoverShuffle`
+Inspect before implementing. The roadmap (§54) describes desired outcomes,
+not permission to rewrite working code.
 
-**Target:** Playnite Desktop
+If a requested feature already exists: locate it, read it and its tests,
+decide if it satisfies the request, keep what's correct, modify only the
+deficient parts, add tests where needed, avoid architecture churn without a
+demonstrated problem. Never assume something is missing because it's on the
+roadmap; never replace working code with a "cleaner" hypothetical design.
 
-**Framework:** `net462`
+Before touching an area, answer: What implements this now? What tests cover
+it? What does the README promise? What's actually missing/broken? What's
+the smallest safe change?
 
-**Language:** C# / latest language version supported by the project
+## 3. Current Capabilities (assume present unless inspection proves otherwise)
 
-**UI:** WPF
+Per-game cover pools (max 10) · local import · SteamGridDB search/download ·
+Playnite artwork import · cover hashing/validation · ownership + original-
+cover restoration · persistent plugin-owned data · cover enable/disable ·
+randomized no-immediate-repeat shuffling · persisted shuffle state · per-
+game/global scheduling · due-shuffle handling at startup · optional shuffle
+on launch · new-game automation (Do Nothing/Ask/Automatic) · configurable
+notifications · Cover Shuffle Manager with bulk ops + import/export ·
+maintenance scanning/cleanup · SteamGridDB key validation · provider/cache
+abstractions · separate test project · `.pext` packaging.
 
-**Current project version:** `1.3.0`
+Don't reimplement these as if missing. The README is part of the product
+contract — if code and README disagree, investigate which is authoritative.
 
-**Primary purpose:**
+## 4. Verified Current Limitations
 
-Cover Shuffle is a Playnite extension that lets users maintain a pool of up to
-10 alternate cover artworks for a game and rotate the Playnite cover manually,
-on a schedule, or on game launch.
+1. Due scheduled shuffles apply at Playnite startup, not continuously.
+2. Playnite metadata artwork support is strongest for artwork already local;
+   bare remote URLs aren't fully supported.
+3. Import/export assumes the same Playnite library (matching game IDs).
 
-Supported cover sources currently include:
+Record newly discovered limitations rather than ignoring them. Don't claim a
+limitation is fixed unless implementation and tests prove it.
 
-- Local image files
-- SteamGridDB
-- Artwork already available through Playnite metadata/artwork
+## 5. Hard Rule: Phased Development
 
-The plugin owns copies of managed artwork and keeps enough information to
-restore the original Playnite cover.
+Work only on the phase given. A phase may introduce the minimum abstraction
+a future feature needs, but must not silently implement that future
+feature. Example — correct: add a scheduler abstraction while building live
+scheduling. Incorrect: also add seasonal/AI artwork, stats, or new
+providers while fixing scheduling. If no phase is specified, pick the
+smallest coherent phase yourself rather than expanding scope.
 
----
+## 6. Phase Completion Gate
 
-# 2. EXISTING REPOSITORY RULE — HIGHEST IMPORTANCE
+A phase is done only when: it builds; existing functionality still works;
+requested functionality is implemented (not stubbed); relevant tests exist
+and pass; no new unjustified compiler warnings; no TODO standing in for
+claimed-complete functionality; persistent data stays compatible or is
+migrated; UI works in both Playnite themes; no unrelated future feature
+snuck in; the change was reviewed for regressions.
 
-This is an existing implementation with substantial functionality already
-present.
+Every completion report needs: Summary, Files added/modified, key
+decisions, tests added/changed, build result, test result, known
+limitations, deferred work, manual Playnite test steps.
 
-Claude MUST inspect the repository before implementing any requested feature.
+## 7. Priority Order (when requirements conflict)
 
-The feature roadmap describes desired outcomes; it is **not** a reason to
-rewrite existing working code.
+1. User data safety 2. Playnite compatibility 3. Correctness 4. Existing
+user configuration 5. Requested phase 6. Reliability 7. Maintainability
+8. Performance 9. UX convenience 10. Future extensibility
 
-If a requested feature already exists:
+Never sacrifice data safety or Playnite compatibility for polish.
 
-1. Locate the implementation.
-2. Read it and its tests.
-3. Determine whether it actually satisfies the requested behaviour.
-4. Keep correct code.
-5. Modify only the deficient parts.
-6. Add or improve tests where necessary.
-7. Avoid architecture churn unless there is a demonstrated problem.
+## 8. Architecture
 
-Never assume a feature is missing merely because it appears in a roadmap.
+Preserve the existing layering:
 
-Never replace a functioning implementation with a hypothetical implementation
-just because a different design appears cleaner in isolation.
-
-Before changing an area, answer:
-
-- What currently implements this?
-- What tests cover it?
-- What behaviour does the README promise?
-- What is actually missing or broken?
-- What is the smallest safe change?
-
----
-
-# 3. CURRENT REPOSITORY CAPABILITIES
-
-The current project already contains substantial functionality. Treat these as
-existing capabilities unless inspection proves otherwise:
-
-- Per-game cover pools
-- Maximum of 10 covers per game
-- Local cover import
-- SteamGridDB cover search/download
-- Playnite artwork import
-- Cover hashing/validation
-- Cover ownership and original-cover restoration
-- Persistent plugin-owned data
-- Cover enable/disable state
-- Randomized no-immediate-repeat cover shuffling
-- Persisted shuffle state
-- Per-game/global scheduling configuration
-- Due-shuffle handling at Playnite startup
-- Optional shuffle on game launch
-- New-game automation with Do Nothing / Ask / Automatic behaviour
-- Configurable notifications
-- Cover Shuffle Manager
-- Bulk manager operations
-- Configuration import/export
-- Maintenance scanning and explicit cleanup
-- SteamGridDB API-key validation
-- Provider abstractions
-- Caching abstractions
-- Separate tests project
-- `.pext` packaging through the project file
-
-Do not reimplement these as if they were missing.
-
-The README is part of the current product contract. If implementation and
-README disagree, investigate which is authoritative before changing either.
-
----
-
-# 4. VERIFIED CURRENT LIMITATIONS
-
-The current repository documentation identifies these limitations. They are
-important when planning future work:
-
-1. A due scheduled shuffle is currently applied at Playnite startup rather
-   than continuously while Playnite remains open.
-2. Playnite Metadata artwork support is currently strongest for artwork that
-   already exists as a local file; bare remote URLs are not fully supported.
-3. Configuration import/export is designed primarily for the same Playnite
-   library and depends on matching Playnite game IDs.
-
-Additional limitations or defects discovered during development must be
-recorded rather than silently ignored.
-
-Do not claim a limitation has been fixed unless the implementation and tests
-actually prove it.
-
----
-
-# 5. HARD RULE: PHASED DEVELOPMENT
-
-When the user gives a numbered phase, Claude MUST work only on that phase.
-
-Do not implement unrelated future features.
-
-A phase may introduce the minimum abstraction needed by a future feature, but
-must not silently implement that future feature.
-
-For example:
-
-**Correct:**
-
-Create a scheduler abstraction while implementing live scheduling.
-
-**Incorrect:**
-
-While fixing scheduling, also implement seasonal artwork, AI artwork,
-statistics, and additional providers.
-
-If the user has not explicitly specified phases, Claude should first identify
-the smallest coherent phase rather than turning one request into an unrelated
-large rewrite.
-
----
-
-# 6. PHASE COMPLETION GATE
-
-A phase is complete only when:
-
-1. The project builds successfully.
-2. Existing relevant functionality still works.
-3. Requested functionality is implemented, not stubbed.
-4. Relevant tests exist and pass.
-5. No new compiler warnings are introduced without justification.
-6. No TODO is used as a substitute for functionality claimed to be complete.
-7. Persistent data remains compatible, or migration is implemented.
-8. UI changes work with Playnite's supported themes where applicable.
-9. No unrelated future feature has been added.
-10. The changed code has been reviewed for regressions.
-11. The final report clearly states what changed and what remains.
-
-Every phase completion report must contain:
-
-- Summary
-- Files added
-- Files modified
-- Important implementation decisions
-- Tests added/changed
-- Build result
-- Test result
-- Known limitations
-- Deferred work
-- How to manually test the feature in Playnite
-
----
-
-# 7. DEVELOPMENT PRIORITY ORDER
-
-When requirements conflict, use this order:
-
-1. User data safety
-2. Playnite compatibility
-3. Correctness
-4. Existing user configuration
-5. Requested phase
-6. Reliability
-7. Maintainability
-8. Performance
-9. UX convenience
-10. Future extensibility
-
-Do not sacrifice data safety or Playnite compatibility for visual polish.
-
----
-
-# 8. ARCHITECTURE PRINCIPLES
-
-The repository already uses separation between Playnite integration,
-application/service logic, domain concepts, infrastructure/providers,
-persistence, and UI.
-
-Preserve that separation.
-
-Prefer this dependency direction:
-
-```text
-Playnite Integration
-        ↓
-Application Services
-        ↓
-Domain / Core
-        ↓
-Infrastructure
+```
+Playnite Integration → Application Services → Domain/Core → Infrastructure
 ```
 
-UI should call application services/view models.
+UI calls services/view models, never persistence directly. Domain/shuffle
+logic knows nothing about WPF or SteamGridDB. SteamGridDB code knows
+nothing about WPF. Playnite SDK types shouldn't leak into domain logic
+without strong reason. Add abstractions for testability/separation/real
+future need — not for theoretical purity.
 
-UI should not directly manipulate persistence files.
+## 9. `Plugin.cs` and Lifecycle
 
-Domain/shuffle logic must not know about WPF.
+Composition root only — lifecycle, service wiring, Playnite event
+registration, menus, settings, disposal. No business logic; substantial
+logic belongs in a service. Register event handlers exactly once; dispose/
+unregister properly. Reload and shutdown must leave no running workers,
+timers, HTTP calls, or subscriptions.
 
-Domain/shuffle logic must not know about SteamGridDB.
+## 10. Domain Model
 
-SteamGridDB code must not know about WPF controls.
+- **Game** — referenced by stable Playnite ID; never duplicate the full
+  Playnite game object in plugin storage.
+- **Cover** — CoverId, GameId, Source, SourceId, LocalPath, Hash, AddedAt,
+  LastUsedAt, UsageCount, IsEnabled. Reuse this model, don't add a parallel one.
+- **Settings** — global defaults, optional per-game overrides.
+- **Shuffle state** — CurrentCoverId, LastShuffleAt, NextShuffleAt,
+  cycle/order state. Never reconstruct scheduling state from UI state.
 
-Playnite SDK types should not leak into domain logic unless there is a strong
-reason.
+## 11. Cover Limit
 
-Do not introduce abstractions simply for theoretical purity. Add them when
-they improve testability, separation, or an actual future requirement.
+Max **10 covers/game**, enforced centrally — never scatter literal `10`
+through business logic, never make it configurable without an explicit
+phase for that, never let bulk actions/imports/providers/UI bypass it.
 
----
+## 12. Cover Ownership & User Data Safety — Critical
 
-# 9. `Plugin.cs` AND LIFECYCLE
+Never destructively overwrite original artwork without retaining enough to
+restore it. Capture the original the first time Cover Shuffle takes
+control. Disabling Cover Shuffle must not destroy the original. Removing a
+cover from the pool must not delete its file unless the user explicitly
+runs a safe cleanup action. Never delete Playnite's original artwork as
+routine housekeeping. Never assume an artwork reference is a plain
+filesystem path — use Playnite-supported artwork APIs.
 
-`Plugin.cs` is the Playnite integration/composition root, not the place for
-business logic.
+## 13. Shuffle Engine
 
-Keep it responsible for things such as:
+Behavior is randomized, no-immediate-repeat. Not `current + 1`; not
+unrestricted random that can repeat immediately. Semantics: gather enabled
+covers → drop invalid/missing → build a randomized cycle → consume each
+cover once → reshuffle a new cycle when exhausted → with >1 candidate,
+never start the new cycle with the cover just shown.
 
-- plugin lifecycle
-- service composition
-- Playnite event registration
-- menu registration
-- settings integration
-- disposal/shutdown
-
-Do not turn it into a god class.
-
-If a new feature requires substantial logic, put that logic in an appropriate
-service rather than adding more branches to `Plugin.cs`.
-
-When adding event handlers, ensure they are registered exactly once and are
-unregistered/disposed appropriately.
-
-Plugin reload and Playnite shutdown must not leave background workers, timers,
-HTTP operations, or event subscriptions running.
-
----
-
-# 10. DOMAIN MODEL
-
-The conceptual domain includes:
-
-### Game
-
-Represents the Playnite game through its stable Playnite ID.
-
-Do not duplicate the complete Playnite game object in plugin storage.
-
-### Cover
-
-Represents a managed artwork item. Relevant concepts include:
-
-- CoverId
-- GameId
-- Source
-- SourceId
-- LocalPath
-- Hash
-- AddedAt
-- LastUsedAt
-- UsageCount
-- IsEnabled
-
-Use the existing model before introducing another parallel cover model.
-
-### Cover shuffle settings
-
-Global settings provide defaults. Game-specific settings override them where
-appropriate.
-
-### Shuffle state
-
-Contains persisted runtime state such as:
-
-- CurrentCoverId
-- LastShuffleAt
-- NextShuffleAt
-- cycle/order state required by the shuffle implementation
-
-Scheduling state must not be reconstructed from UI state.
-
----
-
-# 11. COVER LIMIT
-
-The current supported maximum is **10 covers per game**.
-
-The limit must be enforced centrally.
-
-Never scatter literal `10` throughout business logic.
-
-Do not make the limit configurable unless the current phase explicitly calls
-for that feature.
-
-Do not bypass the limit through bulk actions, imports, providers, or UI.
-
-All entry points must respect the same policy.
-
----
-
-# 12. COVER OWNERSHIP AND USER DATA SAFETY
-
-This is one of the most important parts of the project.
-
-Cover Shuffle must never destructively overwrite a user's original artwork
-without retaining enough information to restore it.
-
-When Cover Shuffle first takes control of a game's cover, preserve the
-original artwork using the existing ownership mechanism.
-
-Disabling Cover Shuffle must not destroy the original artwork.
-
-Removing a cover from the shuffle pool must not automatically delete its
-physical file unless the user explicitly performs a safe cleanup action.
-
-Never delete Playnite's original artwork as ordinary plugin housekeeping.
-
-Never assume an artwork reference is merely a simple filesystem path.
-
-Use Playnite-supported artwork APIs/mechanisms.
-
----
-
-# 13. SHUFFLE ENGINE RULES
-
-The current product behaviour is randomized, no-immediate-repeat shuffling.
-
-A shuffle must not simply do:
-
-```text
-current + 1
 ```
-
-and must not choose a completely unrestricted random item that can repeat
-immediately.
-
-The preferred cycle semantics are:
-
-1. Gather enabled covers.
-2. Remove invalid/missing candidates.
-3. Build a randomized cycle.
-4. Consume each cover once.
-5. Build another randomized cycle when exhausted.
-6. When more than one candidate exists, do not begin the new cycle with the
-   cover that was just displayed.
-
-Example:
-
-```text
 Pool: A B C D E
-
 Cycle 1: C A E B D
 Cycle 2: B D A E C
 ```
 
-The exact random sequence is not part of the product contract; the invariants
-are.
+Exact sequence isn't contractual; the invariants are. Must be independently
+testable; don't scatter `Random` calls — abstract it if needed, without
+coupling tests to specific values. Must stay correct for: 0/1/2 covers,
+disabled covers, missing files, removed/newly-added covers, current cover
+removed, Playnite restart, persisted cycle state.
 
-The shuffle engine must be independently testable.
+## 14. Scheduling
 
-Do not scatter calls to `Random` throughout the application.
+Use real timestamps (LastShuffleAt/NextShuffleAt), not "add interval on
+every startup." At startup, apply due work once — don't replay every missed
+interval. No duplicate scheduling work on reload. A game with no valid
+enabled covers must be skipped safely, never given a broken artwork
+reference. An interval change recalculates and persists the next run. All
+internal time math uses UTC; convert to local only for display. Future live
+scheduling needs proper cancellation/lifecycle and must not block the UI
+thread.
 
-If randomness needs to be abstracted, use a small testable abstraction rather
-than coupling tests to implementation-specific random values.
+## 15. Settings Inheritance
 
-Edge cases that must remain correct:
-
-- zero covers
-- one cover
-- two covers
-- disabled covers
-- missing files
-- removed covers
-- newly added covers
-- current cover removed
-- Playnite restart
-- persisted cycle state
-
----
-
-# 14. SCHEDULING RULES
-
-The scheduler uses actual timestamps.
-
-Persist and reason about:
-
-- LastShuffleAt
-- NextShuffleAt
-
-Do not implement schedules as "add the interval whenever Playnite starts".
-
-At startup, due work should normally be applied once rather than replaying
-every missed interval.
-
-Do not create duplicate scheduling work when the plugin reloads.
-
-Future live scheduling must be implemented with proper lifecycle/cancellation
-handling and must not block Playnite's UI thread.
-
-When a game has no valid enabled covers, the scheduler must skip safely and
-must not apply a broken artwork reference.
-
-When an interval changes, the next scheduled time must be recalculated using
-well-defined semantics and persisted.
-
-All internal time calculations should use a consistent representation,
-preferably UTC, with local conversion only for display.
-
----
-
-# 15. SETTINGS AND CONFIGURATION INHERITANCE
-
-Global settings are defaults, not necessarily direct commands for every game.
-
-Game-specific configuration must be resolved through one coherent mechanism.
-
-The desired conceptual model is:
-
-```text
-Global default
-      ↓
-Game override, if present
-      ↓
-Effective settings
+```
+Global default → Game override (if present) → Effective settings
 ```
 
-Where a game can inherit individual settings rather than requiring a complete
-copy of global settings.
+A game should be able to inherit individual settings rather than needing a
+full snapshot. If the current implementation is still a full per-game
+snapshot, don't silently redesign it in an unrelated phase — introduce real
+inheritance only as its own configuration-focused change, with migration/
+compatibility for existing data. Validate settings before applying; invalid
+intervals must not crash the plugin. Don't store transient runtime state as
+a user setting.
 
-If the existing implementation still uses a complete per-game snapshot,
-do not silently redesign it during an unrelated phase. Introduce proper
-inheritance only as part of a configuration-focused change and preserve
-existing user behaviour/data through migration or compatibility handling.
+## 16–19. SteamGridDB — Architecture, Matching, Network, Caching
 
-Settings must be validated before being applied.
+- All API access lives in the provider/client layer — no scattered HTTP
+  calls, no raw HTTP from UI. Flow: search/match → selected game → artwork
+  retrieval → download/cache → normalized CoverAsset/import.
+- Never hard-code, commit, log, or leak credentials — including in
+  exceptions or UI diagnostics.
+- Don't assume the first search result is correct; let the user resolve
+  ambiguous matches. Matching may use name/platform/year/developer/known
+  IDs. Skip complex scoring without tests and a product reason. A
+  high-confidence auto-match is fine only if the user can still correct it.
+- Use async I/O. Handle gracefully: no key, invalid/rejected key, timeout,
+  DNS/network failure, server error, rate limiting, malformed response,
+  download failure. Bounded retry/backoff for transient failures only —
+  never retry auth failures indefinitely. Provider failure must never break
+  normal offline shuffling.
+- Use the existing cache abstraction (don't add a second one). Cache is an
+  optimization, never a dependency — previously imported covers must work
+  offline. Invalidation/cleanup is explicit and testable; no unbounded
+  growth without a maintenance strategy.
 
-Invalid intervals must not crash the plugin.
+## 20–22. Artwork Import & File Safety
 
-Do not store transient runtime state as user settings.
+- **Playnite artwork provider**: normalize into the plugin's owned cover
+  representation; existing local artwork must work offline; if importing
+  remote URLs, the downloaded copy must become plugin-owned and validated
+  before entering the pool. Never modify Playnite artwork directly.
+- **Local file import**: validate the image, use controlled plugin storage,
+  avoid unsafe filenames/paths, dedupe where infra supports it, respect the
+  10-cover limit, never delete the source file. Future drag-and-drop/multi-
+  select must reuse the same import service.
+- **File safety**: never trust remote/source-derived identifiers as raw
+  paths; use stable IDs + validated extensions; no path traversal; never
+  execute downloaded files; validate image contents before use. If a
+  registered cover's file is missing: don't apply the broken path to
+  Playnite, surface the problem, allow maintenance/recovery, keep the
+  record until the user decides.
 
----
+## 23–25. Persistence, Schema, Recovery
 
-# 16. STEAMGRIDDB ARCHITECTURE
+State must survive Playnite restart, plugin reload, and computer restart,
+via the existing repository/persistence abstraction — UI/providers never
+edit JSON directly. Writes should be interruption-safe where practical.
+Don't replace the persistence system without evidence it's necessary.
 
-SteamGridDB is an external provider.
+Schema changes: increment the version, write a deterministic migration,
+preserve old data, test old→new, ensure a failed migration doesn't destroy
+the original, document it. No destructive migrations; move toward an
+explicit migration pipeline rather than ad-hoc compatibility branches.
 
-All API access belongs in the SteamGridDB provider/client layer.
+A corrupt database must not crash Playnite; preserve the corrupt source for
+recovery where supported. If starting clean after corruption, say so
+plainly — never claim recovery that didn't happen. Prefer atomic-replace
+writes. Any future backup/recovery feature builds on the existing model.
 
-Do not scatter HTTP calls across services or UI code.
+## 26–30. UI Architecture & Modern UI
 
-The provider should conceptually separate:
-
-```text
-Game search/matching
-        ↓
-Selected SteamGridDB game
-        ↓
-Artwork retrieval
-        ↓
-Download/cache
-        ↓
-Normalized CoverAsset / cover import
+```
+View → ViewModel → Application service → Repository/provider/storage
 ```
 
-The UI must not perform raw HTTP calls.
-
-API credentials must never be hard-coded, committed, logged, or included in
-exception messages.
-
-Network failures must not crash Playnite.
-
-Previously downloaded/owned covers must continue to work offline.
-
----
-
-# 17. STEAMGRIDDB MATCHING
-
-Do not silently assume that the first SteamGridDB search result is always the
-correct game.
-
-For ambiguous searches, the user should be able to choose the correct game.
-
-Where practical, matching can consider:
-
-- normalized game name
-- platform
-- release year
-- developer/publisher
-- known store/source IDs
-
-Do not introduce a complicated scoring system without tests and a product
-reason for it.
-
-A high-confidence automatic match may be acceptable, but the user must have
-a way to correct an incorrect match.
-
----
-
-# 18. STEAMGRIDDB NETWORK BEHAVIOUR
-
-Use asynchronous network operations where compatible with Playnite and the
-existing architecture.
-
-Handle at least these classes of failure gracefully:
-
-- no API key
-- invalid/rejected API key
-- timeout
-- DNS/network failure
-- server error
-- rate limiting
-- malformed response
-- download failure
-
-Transient failures may use bounded retry/backoff where appropriate.
-
-Do not retry authentication failures indefinitely.
-
-Do not make provider failure prevent normal offline cover shuffling.
-
----
-
-# 19. CACHING
-
-Use the existing cache abstraction rather than inventing a second cache.
-
-Cache external artwork/search information where appropriate.
-
-The cache must be an optimization, not a dependency for ordinary operation.
-
-Previously imported covers must work without network access.
-
-Cache invalidation/cleanup must be explicit and testable.
-
-Never allow unbounded cache growth without a maintenance strategy.
-
----
-
-# 20. PLAYNITE ARTWORK PROVIDER
-
-Playnite artwork import should normalize available artwork into the plugin's
-owned cover representation.
-
-Existing local artwork should be usable offline.
-
-If adding support for remote artwork URLs, ensure the downloaded copy becomes
-plugin-owned and is validated before entering the cover pool.
-
-Do not modify Playnite artwork directly from the provider.
-
----
-
-# 21. LOCAL FILE IMPORT
-
-Local image import must:
-
-- validate the image
-- use controlled plugin-owned storage
-- avoid unsafe filenames/paths
-- detect duplicates where existing infrastructure supports it
-- respect the 10-cover limit
-- avoid deleting the source file
-
-Future drag-and-drop or multi-select UI should reuse the same import service
-rather than bypassing validation/storage.
-
----
-
-# 22. COVER FILE SAFETY
-
-Remote/source-derived identifiers and filenames must never be trusted as raw
-filesystem paths.
-
-Use controlled paths based on stable IDs and validated extensions.
-
-Do not allow path traversal.
-
-Do not execute downloaded files.
-
-Validate image contents before treating them as usable covers.
-
-If a registered cover file is missing:
-
-- do not apply the broken path to Playnite
-- surface the problem where appropriate
-- allow maintenance/recovery
-- preserve the record until the user chooses what to do
-
----
-
-# 23. PERSISTENCE
-
-Plugin-owned state must survive:
-
-- Playnite restart
-- plugin reload
-- computer restart
-
-The persistence layer must remain separate from UI and domain logic.
-
-Use the existing repository/persistence abstraction rather than allowing UI
-or provider code to edit JSON directly.
-
-Persistent writes must be safe against interruption as far as practical.
-
-Avoid unnecessary full-database rewrites if performance becomes a real issue,
-but do not replace the existing persistence system without evidence that it is
-necessary.
-
----
-
-# 24. SCHEMA VERSIONING AND MIGRATION
-
-Persistent data is user data.
-
-Never silently discard it because the model changed.
-
-The repository already has schema-version concepts. Preserve them.
-
-When a schema change is required:
-
-1. Increment the schema version.
-2. Implement a deterministic migration.
-3. Preserve old data where possible.
-4. Test old → new migration.
-5. Ensure failed migration does not destroy the original data.
-6. Document the migration.
-
-Do not invent destructive migrations.
-
-Future schema changes should move toward an explicit migration pipeline rather
-than a collection of ad-hoc compatibility branches.
-
----
-
-# 25. DATABASE RECOVERY
-
-A corrupt database must not crash Playnite.
-
-Preserve the corrupt source for recovery/diagnostics where the existing
-implementation supports this.
-
-If starting with a clean state after corruption, communicate that clearly and
-never claim the old data was recovered unless it actually was.
-
-Prefer safe temporary writes and atomic replacement mechanisms supported by
-the target runtime.
-
-A future backup/recovery feature must build on the existing persistence model,
-not create an unrelated storage system.
-
----
-
-# 26. UI ARCHITECTURE
-
-WPF UI should use the existing project conventions and Playnite-compatible
-resources.
-
-The UI must not directly manipulate persistence.
-
-Prefer:
-
-```text
-View
- ↓
-ViewModel
- ↓
-Application service
- ↓
-Repository/provider/storage
+No network/persistence/shuffle logic in code-behind beyond a narrow UI
+reason; keep code-behind small. Use Playnite/theme resources for
+backgrounds, foregrounds, borders, accents, buttons, hover/selection/
+disabled/focus states — no hard-coded black/white palette. Test both
+themes for any important UI state.
+
+SteamGridDB browser flow: open from a game (title prefilled) → search →
+resolve ambiguous game → browse covers → single click selects → selection
+is visibly obvious → Add Selected Cover. Cards should support normal/hover/
+pressed/selected/focused/disabled-already-added states with accessible
+names. Never make an image look clickable while routing the click
+elsewhere.
+
+Aim for modern-extension feel: clear hierarchy, restrained spacing,
+consistent cards, responsive grids, clear primary actions, meaningful empty
+states, loading indicators, clear errors, obvious selection, keyboard nav.
+Avoid: nested borders, dead whitespace, hard-coded colors, unexplained
+icons, tiny click targets, fake-interactive controls, needless modals.
+
+Represent async states explicitly: idle/loading/success/empty/error/
+disabled/selected. Never leave the user guessing if a request is running;
+prevent duplicate-click search/downloads; never freeze the Playnite UI
+during image/network loads.
+
+## 31–34. Menu, Manager, New-Game Automation, Notifications
+
+- **Game context menu**: Enable/Disable Cover Shuffle, Add Cover, Shuffle
+  Now, Manage Covers, Restore Original Cover — grouped, state-aware. No
+  duplicate items after reload; no settings exposed for unimplemented
+  features.
+- **Manager**: already supports searchable management, bulk ops, import/
+  export, maintenance — don't replace without a demonstrated problem.
+  Improvements should track: enabled state, cover count, current cover,
+  next shuffle, effective interval, search/filter, safe bulk actions,
+  empty states, clear destructive-action confirmation. Bulk actions reuse
+  the same services/policies as single-game actions.
+- **New-game automation**: Do Nothing / Ask / Automatic. Keep Automatic
+  lightweight — don't silently query SteamGridDB for every new game;
+  provider/network-heavy automation stays explicit. A game shouldn't
+  re-trigger new-game behavior once already seen.
+- **Notifications**: useful, not noisy; preserve existing preferences; no
+  success notification per internal op unless opted in; user-facing errors
+  stay concise while raw exceptions go to the log only.
+
+## 35–36. Error Handling & Logging
+
+Pattern: Detect → log useful technical context → recover or fail safely →
+concise user-facing message when useful. Never expose stack traces,
+credentials, or implementation details to users. Must degrade gracefully
+for: provider unavailable, invalid API key, download failure, deleted
+cover file, malformed JSON, invalid game ID, corrupt image, invalid
+settings, interrupted import, missing dependency.
+
+Use existing logging conventions (Debug/Information/Warning/Error) with
+enough context for scheduling, provider, storage, persistence, integration,
+and import/export issues. Never log secrets or unnecessary sensitive data.
+Don't log every routine shuffle at a noisy level by default.
+
+## 37–38. Testing
+
+Tests are first-class and must stay independent of a real Playnite
+install, a live SteamGridDB key, internet access, or user-specific
+filesystem state — use fakes/mocks for providers and time/randomness.
+
+High-value coverage: **Shuffle** (0/1/multi covers, no-repeat, cycle
+exhaustion/reshuffle, disabled/missing covers, persisted state, pool
+changes). **Scheduling** (due/not due, startup handling, missed intervals,
+interval changes, disabled games, missing covers, persisted timestamps).
+**Configuration** (defaults, overrides, validation, reset/inheritance).
+**Persistence** (save/load, corrupt data, schema version, migration,
+round-trip). **Providers** (normalization, auth/network failure, malformed
+response, duplicates, source ID). **Cover management** (import, validation,
+limit enforcement, dedupe, restoration, missing files). **UI/ViewModels**
+(search/selection/add-button/loading/error/empty states, commands).
+
+Test observable behavior and invariants, not implementation mirrors.
+
+Unit tests can't catch every WPF interaction bug — when changing
+interactive controls, manually verify click, keyboard focus, selection,
+hover, enabled/disabled, dark/light theme, resizing, scrolling. If
+automated UI testing is impractical, document manual steps in the
+completion report. (Reminder: a cover once looked clickable but wasn't —
+ViewModel tests alone don't catch that class of bug.)
+
+## 39. Performance
+
+Avoid repeated full-library scans when event-driven works, repeated
+provider queries/downloads, unnecessary UI-thread image decoding, duplicate
+per-game timers, excessive DB rewrites. Don't optimize without a measured
+or identified bottleneck. A large library must not make the manager/
+settings unusably slow.
+
+## 40. Live Scheduler — Future Requirements
+
+One coherent scheduler service; cancellation token / deterministic
+shutdown; no UI-thread blocking; no duplicate workers after reload;
+persist next-run timestamps; wake/recalculate on relevant setting changes;
+handle sleep/restart sensibly; never replay a backlog of every missed
+interval; skip invalid/missing covers safely. Prefer one scheduler over one
+timer per game.
+
+## 41. Import/Export
+
+Must stay backward compatible. Validate structure, version/schema, game
+identity, cover references, image files. Never silently overwrite unrelated
+data; report unmatched games clearly. Distinguish future config-export from
+full backup/restore; don't claim cross-library remapping unless it's
+actually implemented.
+
+## 42. Maintenance & Cleanup
+
+Scanning never deletes. Cleanup must: show what will be affected, require
+explicit confirmation, delete only plugin-owned data that's safe to delete,
+never delete Playnite's original artwork as routine cleanup. Categories:
+orphaned cover files, missing cover records/files, stale provider cache,
+unused cache, invalid records. Every new cleanup action must define
+ownership before deletion.
+
+## 43. Backup & Recovery
+
+Before major persistence changes, plan how existing users recover their
+data. Don't use "we'll add backup" as an excuse for an unnecessary storage-
+model change. Any backup/archive format needs enough version metadata for
+future recovery.
+
+## 44–46. Dependencies, Packaging, Versioning
+
+Targets `net462`; references PlayniteSDK `6.16.0`, Newtonsoft.Json
+`13.0.3`. PlayniteSDK is compile-time only — don't package a runtime copy
+Playnite already supplies. Keep `DeployForPlaynite`/`PackageExtension`
+targets intact. Dependency version changes require: verify Playnite
+compatibility, build, test loading, check packaging contents, document why.
+
+The `.pext` ships only what Playnite needs — no tests, source, SDK runtime
+copies, credentials, dev artifacts, debug files. Inspect package contents
+before release rather than trusting the MSBuild rule blindly.
+
+Keep project version, assembly version, `extension.yaml`, and README/
+release notes aligned; use semver. A change affecting persisted data needs
+extra care even for a "minor" bump.
+
+## 47. Security
+
+Never commit/hard-code/log secrets; never trust remote filenames as paths;
+never execute downloaded files; never write outside controlled plugin
+storage without explicit need; never expose credentials via UI diagnostics.
+Treat provider responses as untrusted input — validate lengths,
+identifiers, URLs, filenames, image data.
+
+## 48. Documentation Contract
+
+The README describes user-visible behavior; update it in the same phase
+when behavior changes materially. Never document aspirational functionality
+as implemented. Keep limitations honest; document any required manual
+setup step.
+
+## 49–50. Code Style & Comments
+
+`PascalCase` classes/interfaces(`I`-prefixed)/methods, `_camelCase` private
+fields, `camelCase` locals. Follow existing repo style where consistent;
+avoid unnecessary abbreviations; prefer small focused methods over deep
+nesting or clever patterns without concrete benefit.
+
+Comments explain **why**, not what — Playnite API quirks, persistence
+compatibility decisions, scheduling edge cases, provider-specific behavior,
+security decisions. Don't narrate each line.
+
+## 51. When Requirements Are Ambiguous
+
+Don't silently invent major product behavior. For anything touching
+architecture, persistence, user data, or visible behavior: identify the
+ambiguity, state your assumption, choose the smallest reversible option if
+safe, proceed on low-risk decisions, but ask when the decision risks data
+loss or major product divergence. Don't block on trivia.
+
+## 52–53. Don't Over-Engineer / Don't Refactor for Style Alone
+
+No unnecessary DI frameworks, databases, event buses, generic repositories,
+one-method abstractions, or third-party UI libraries — keep this small
+plugin maintainable with the simplest design that stays testable and
+flexible. Don't turn a phase into a repo-wide cleanup; record unrelated
+tech debt, fix only if it blocks the current feature or is a clear safety
+risk, otherwise defer. Keep diffs reviewable.
+
+## 54. Feature Roadmap (guidance, not a to-do list — implement only the
+requested phase)
+
+- **A — Core Shuffle Reliability**: invariants, cycle persistence, disabled/
+  missing covers, manual shuffle, state recovery.
+- **B — Live Scheduling**: background scheduling, lifecycle, cancellation,
+  next-run calc, sleep/restart behavior, no duplicate workers.
+- **C — SteamGridDB 2.0**: multi-match UX, correct-game selection, stronger
+  matching, filtering, rate-limit handling, caching, load feedback.
+- **D — UI/UX Modernisation**: theme compatibility, modern browser, reliable
+  click selection, preview, responsive grid, state coverage, a11y, manager
+  polish.
+- **E — Effective Settings**: true inheritance, per-setting overrides, reset
+  to default, effective-settings service, config migration.
+- **F — Advanced Cover Management**: per-cover enable/disable, favourites,
+  ordering, usage stats, least-used/weighted shuffle, missing-cover
+  recovery, drag/drop import.
+- **G — Playnite Integration**: better launch-shuffle controls, new-game
+  workflow, stronger metadata artwork support, event-driven integration.
+- **H — Portability & Recovery**: robust import matching, backup/restore,
+  migration framework, recovery tooling.
+- **I — Hardening**: race conditions, file locking, reload/shutdown,
+  corrupted data, missing files, provider failures, large libraries,
+  memory, responsiveness.
+- **J — Release Candidate**: CI, build/package verification, clean install,
+  upgrade testing, docs, release notes, final polish.
+
+## 55. High-Value Future Features (not permission to build them now)
+
+Cover preview · per-cover enable/disable · favourites · usage info ·
+least-used shuffle · missing-cover redownload · drag-and-drop import ·
+seasonal cover groups (once scheduler/model are stable) · safe diagnostics
+summary (plugin/version/DB/provider status, no secrets).
+
+## 56. Requires Explicit Approval Before Adding
+
+AI-generated artwork, a separate background/tray app, a new database
+technology, a custom Playnite theme dependency, an additional online
+provider, telemetry/analytics, account systems, cloud sync, automatic
+network scraping.
+
+## 57. Development Workflow
+
+**Before coding**: read this file, inspect the repo tree, read relevant
+implementation + tests + README section, identify what exists, define the
+smallest coherent change.
+**During**: preserve architecture, reuse existing services/abstractions,
+scope tightly, add tests with the implementation, avoid unrelated
+formatting churn, check error handling/persistence.
+**After**: build, run tests, inspect the diff, verify no secrets/dev files
+leaked, verify no future-phase feature slipped in, update docs if needed,
+write the completion report.
+
+## 58. Required Self-Review Before Final Response
+
+```
+[ ] Inspected existing implementation first?
+[ ] Preserved working functionality?
+[ ] Worked only within requested scope?
+[ ] Preserved user data and schema compatibility?
+[ ] Handled errors?
+[ ] Added appropriate tests?
+[ ] Built the project and ran the relevant tests?
+[ ] Checked dark/light UI and Playnite lifecycle where applicable?
+[ ] Inspected the final diff, confirmed no secrets introduced?
+[ ] Documented limitations honestly, with manual Playnite test steps?
 ```
 
-Do not put network, persistence, or shuffle algorithms into code-behind unless
-there is a narrow UI-specific reason.
-
-Keep code-behind small.
-
----
-
-# 27. PLAYNITE THEME COMPATIBILITY
-
-The UI must work with Playnite themes.
-
-Dark mode must be treated as a first-class supported experience.
-
-Light mode must remain readable and usable.
-
-Do not hard-code a separate black/white palette throughout XAML.
-
-Prefer Playnite/theme resources for:
-
-- backgrounds
-- foregrounds
-- borders
-- accent colours
-- buttons
-- hover states
-- selection states
-- disabled states
-- focus states
-
-If a custom brush is genuinely necessary, keep it local and document why.
-
-Always test important UI states in both dark and light themes.
-
----
-
-# 28. STEAMGRIDDB SELECTION UI
-
-The SteamGridDB cover browser is a key user-facing workflow.
-
-The desired interaction is:
-
-```text
-Open from Playnite game
-        ↓
-Game title prefilled
-        ↓
-Search
-        ↓
-Select correct SteamGridDB game if ambiguous
-        ↓
-Browse covers
-        ↓
-Single click selects a cover
-        ↓
-Selection is visibly obvious
-        ↓
-Add Selected Cover
-```
-
-The cover card should support, where practical:
-
-- normal state
-- hover state
-- pressed state
-- selected state
-- keyboard focus
-- disabled/already-added state
-
-The user must receive clear feedback that a cover was selected.
-
-Do not make an image visually appear clickable while routing the actual click
-to an unrelated control.
-
-Use accessible names/descriptions for cover cards.
-
----
-
-# 29. MODERN UI PRINCIPLES
-
-The UI should feel like a modern Playnite extension rather than a generic old
-WPF utility.
-
-Prefer:
-
-- clear hierarchy
-- restrained spacing
-- consistent card sizing
-- responsive grids
-- clear primary actions
-- meaningful empty states
-- loading indicators/placeholders
-- clear error messages
-- fixed/consistent action areas
-- obvious selection state
-- keyboard navigation
-
-Avoid:
-
-- excessive nested borders
-- large unused whitespace
-- hard-coded colours
-- unexplained icons
-- tiny click targets
-- controls that look interactive but do nothing
-- modal dialogs for operations that can safely happen inline
-
-Do not chase visual trends at the expense of Playnite consistency.
-
----
-
-# 30. UI STATE REQUIREMENTS
-
-Important asynchronous UI workflows should explicitly represent states such
-as:
-
-- idle
-- loading
-- success/results
-- empty
-- error
-- disabled
-- selected
-
-Never leave the user guessing whether a network request is still running.
-
-Prevent accidental duplicate searches/downloads caused by repeated clicks.
-
-Do not freeze the Playnite UI while images or network requests are loading.
-
----
-
-# 31. RIGHT-CLICK GAME MENU
-
-The game context menu is a primary entry point.
-
-Actions should remain conceptually grouped under Cover Shuffle, including:
-
-- Enable Cover Shuffle
-- Disable Cover Shuffle
-- Add Cover
-- Shuffle Now
-- Manage Covers
-- Restore Original Cover
-
-Menu state should reflect the selected game's state.
-
-Do not register duplicate menu items after plugin reloads.
-
-Do not expose settings for features that are not actually implemented.
-
----
-
-# 32. MANAGER
-
-The Cover Shuffle Manager already exists and supports searchable management,
-bulk operations, import/export, and maintenance.
-
-Do not replace it with a new manager unless there is a demonstrated usability
-or architectural problem.
-
-Future manager improvements should focus on:
-
-- clear enabled/disabled state
-- cover count
-- current cover
-- next shuffle
-- effective interval
-- search/filtering
-- safe bulk actions
-- useful empty states
-- clear confirmation for destructive maintenance operations
-
-Bulk actions must reuse the same application services/policies as individual
-game actions.
-
----
-
-# 33. NEW GAME AUTOMATION
-
-Current behaviours are:
-
-- Do nothing
-- Ask
-- Automatic
-
-Automatic preparation should remain lightweight and should not silently
-query SteamGridDB for every newly installed game.
-
-Provider/network-heavy automation must remain explicit unless the product
-requirements are intentionally changed.
-
-A game should not repeatedly trigger "new game" behaviour after it has already
-been seen by Cover Shuffle.
-
----
-
-# 34. NOTIFICATIONS
-
-Notifications should be useful, not noisy.
-
-Existing notification preferences should be preserved.
-
-Do not show a success notification for every internal operation unless the
-user has opted into it.
-
-Errors that require user attention should be communicated clearly while raw
-exceptions remain in logs.
-
----
-
-# 35. ERROR HANDLING
-
-External or malformed input must never crash Playnite where a graceful
-recovery is possible.
-
-Examples include:
-
-- provider unavailable
-- invalid API key
-- image download failure
-- deleted cover file
-- malformed JSON
-- invalid game ID
-- corrupt image
-- invalid settings
-- interrupted import
-- missing dependency
-
-The pattern should generally be:
-
-```text
-Detect
-  ↓
-Log useful technical context
-  ↓
-Recover or fail safely
-  ↓
-Show a concise user-facing explanation when useful
-```
-
-Do not expose stack traces, API credentials, or implementation details to
-ordinary users.
-
----
-
-# 36. LOGGING
-
-Use the existing Playnite/plugin logging conventions.
-
-Useful categories include:
-
-- Debug
-- Information
-- Warning
-- Error
-
-Log enough context to diagnose:
-
-- scheduling
-- provider requests/failures
-- storage failures
-- persistence failures
-- Playnite integration failures
-- import/export problems
-
-Never log:
-
-- API keys
-- credentials
-- secrets
-- unnecessary sensitive user data
-
-Avoid logging every routine shuffle at a noisy level unless the user has
-explicitly enabled useful diagnostic logging.
-
----
-
-# 37. TESTING STRATEGY
-
-Tests are a first-class part of this project.
-
-The existing separate test project must remain independent of a user's actual
-Playnite installation.
-
-Automated tests should not require:
-
-- a real Playnite library
-- a live SteamGridDB API key
-- an internet connection
-- user-specific filesystem state
-
-Use fakes/mocks for external providers and time/randomness where needed.
-
-High-value test areas include:
-
-### Shuffle
-
-- zero covers
-- one cover
-- multiple covers
-- no immediate repeat
-- cycle exhaustion
-- cycle reshuffle
-- disabled covers
-- missing files
-- persisted state
-- pool modification
-
-### Scheduling
-
-- due/not due
-- startup handling
-- missed intervals
-- interval changes
-- disabled games
-- missing covers
-- persisted timestamps
-
-### Configuration
-
-- global defaults
-- game overrides
-- validation
-- reset/inheritance when implemented
-
-### Persistence
-
-- save/load
-- corrupt data
-- schema version
-- migration
-- round-trip compatibility
-
-### Providers
-
-- normalization
-- authentication failure
-- network failure
-- malformed response
-- duplicate handling
-- source identification
-
-### Cover management
-
-- import
-- validation
-- limit enforcement
-- duplicate prevention
-- restoration
-- missing files
-
-### UI/ViewModels
-
-- search state
-- game title autofill
-- selection state
-- add-button state
-- loading/error/empty states
-- commands
-
-Do not write tests that merely mirror implementation details. Test observable
-behaviour and invariants.
-
----
-
-# 38. UI TESTING
-
-Unit tests cannot catch every WPF interaction problem.
-
-When changing interactive WPF controls, explicitly verify:
-
-- mouse click
-- keyboard focus
-- selection
-- hover
-- enabled/disabled state
-- dark theme
-- light theme
-- resizing
-- scrolling
-
-If automated UI testing is impractical, document manual acceptance steps in
-the phase completion report.
-
-The screenshot-driven issue of a cover appearing clickable while not responding
-to clicks is a reminder that ViewModel tests alone are insufficient.
-
----
-
-# 39. PERFORMANCE
-
-The plugin must remain lightweight for large Playnite libraries.
-
-Avoid:
-
-- repeated full-library scans when an event-driven solution is available
-- repeated provider queries
-- repeated downloads
-- unnecessary image decoding on the UI thread
-- duplicate timers per game where one scheduler can handle the workload
-- excessive database rewrites
-
-Do not optimize prematurely. Measure or identify a real bottleneck first.
-
-A large library should not make opening the manager or settings unusably slow.
-
----
-
-# 40. LIVE SCHEDULER FUTURE REQUIREMENTS
-
-The current documented scheduler is startup-based. When live scheduling is
-implemented, it should follow these rules:
-
-- one coherent scheduler service
-- cancellation token / deterministic shutdown
-- no UI-thread blocking
-- no duplicate workers after reload
-- persist next-run timestamps
-- wake/recalculate when relevant settings change
-- handle Playnite sleep/restart sensibly
-- never replay a backlog of every missed interval
-- skip invalid/missing cover files safely
-
-Prefer a single scheduler/priority mechanism over one uncontrolled timer per
-game.
-
----
-
-# 41. IMPORT / EXPORT
-
-Existing import/export must remain backward compatible.
-
-Imports must validate:
-
-- structure
-- version/schema where applicable
-- game identity
-- cover references
-- image files
-
-Never silently overwrite unrelated user data.
-
-Where games cannot be matched, report them clearly.
-
-Future portable backup features should distinguish between:
-
-- configuration export
-- complete backup/restore
-
-Do not claim cross-library remapping unless it is actually implemented.
-
----
-
-# 42. MAINTENANCE AND CLEANUP
-
-Maintenance actions are potentially destructive.
-
-Scanning should not itself delete anything.
-
-Cleanup should:
-
-1. Show what will be affected.
-2. Require explicit confirmation.
-3. Delete only plugin-owned data that is safe to delete.
-4. Never delete Playnite's original artwork as ordinary cleanup.
-
-Potential maintenance categories include:
-
-- orphaned cover files
-- missing cover records/files
-- stale provider cache
-- unused cache
-- invalid records
-
-Any new cleanup operation must clearly define ownership before deletion.
-
----
-
-# 43. BACKUP AND RECOVERY
-
-Before introducing major persistence changes, consider how existing users can
-recover their data.
-
-Do not use backup functionality as an excuse to change the storage model
-unnecessarily.
-
-If a backup/archive format is introduced, include enough version metadata to
-allow future recovery.
-
----
-
-# 44. DEPENDENCIES AND BUILD
-
-The current project targets `net462` and references:
-
-- PlayniteSDK `6.16.0`
-- Newtonsoft.Json `13.0.3`
-
-Playnite SDK is a compile-time dependency and must not be packaged as a second
-runtime copy when Playnite supplies it.
-
-The project contains an existing `DeployForPlaynite` build target and a
-`PackageExtension` target for producing a `.pext` package.
-
-Do not casually remove or alter these targets.
-
-If dependency versions change:
-
-1. Verify Playnite compatibility.
-2. Build the plugin.
-3. Test loading behaviour.
-4. Check packaging contents.
-5. Document the reason.
-
----
-
-# 45. PACKAGING
-
-The distributable `.pext` must contain only what Playnite needs.
-
-Do not accidentally package:
-
-- tests
-- source files
-- Playnite SDK runtime copies
-- local credentials
-- development artifacts
-- unnecessary debug files
-
-Before release, inspect the package contents rather than assuming the MSBuild
-rule is correct.
-
----
-
-# 46. VERSIONING
-
-Keep these aligned when releasing:
-
-- project version
-- assembly version/file version where appropriate
-- `extension.yaml`
-- README/release notes where relevant
-
-Use semantic versioning unless project requirements explicitly change it.
-
-A behaviour change that affects persisted data requires additional care even
-if the semantic version appears minor.
-
----
-
-# 47. SECURITY
-
-Never:
-
-- commit API credentials
-- hard-code secrets
-- log credentials
-- trust remote filenames as paths
-- execute downloaded files
-- write outside controlled plugin storage without explicit need
-- expose credentials through UI diagnostics
-
-Treat external provider responses as untrusted input.
-
-Validate lengths, identifiers, URLs, filenames, image data, and other external
-values where relevant.
-
----
-
-# 48. DOCUMENTATION CONTRACT
-
-The README describes user-visible behaviour.
-
-When a feature changes materially, update documentation in the same phase if
-appropriate.
-
-Do not document aspirational functionality as if it were implemented.
-
-Known limitations must remain honest.
-
-If a manual setup step is required, document it.
-
----
-
-# 49. CODE STYLE
-
-Use conventional C# naming:
-
-- Classes: `PascalCase`
-- Interfaces: `IPascalCase`
-- Methods: `PascalCase`
-- Private fields: `_camelCase`
-- Local variables: `camelCase`
-
-Follow the existing repository style where it is consistent.
-
-Avoid unnecessary abbreviations.
-
-Prefer small, focused methods.
-
-Avoid deeply nested conditional logic when a clearer service/policy can
-express the behaviour.
-
-Do not introduce clever patterns without a concrete benefit.
-
----
-
-# 50. COMMENTS
-
-Comments should explain **why**, not restate **what** the code obviously does.
-
-Useful comments include:
-
-- Playnite API quirks/workarounds
-- persistence compatibility decisions
-- scheduling edge cases
-- provider-specific behaviour
-- security decisions
-
-Do not fill the code with comments that simply narrate each line.
-
----
-
-# 51. WHEN REQUIREMENTS ARE AMBIGUOUS
-
-Do not silently invent major product behaviour.
-
-If an ambiguity affects architecture, persistence, user data, or visible
-behaviour:
-
-1. Identify it.
-2. State the assumption.
-3. Choose the smallest reversible behaviour if safe.
-4. Continue when the decision is low-risk.
-5. Ask for clarification when the decision could cause data loss or major
-   product divergence.
-
-Do not block on trivial details.
-
----
-
-# 52. DO NOT OVER-ENGINEER
-
-Avoid introducing:
-
-- unnecessary dependency injection frameworks
-- unnecessary databases
-- unnecessary event buses
-- unnecessary generic repositories
-- unnecessary abstractions for one method
-- unnecessary third-party UI libraries
-
-The plugin is small and should remain maintainable.
-
-Use the simplest design that preserves testability and future flexibility.
-
----
-
-# 53. DO NOT REFACTOR FOR STYLE ALONE
-
-A phase should not become an excuse for a repository-wide cleanup.
-
-If you discover unrelated technical debt:
-
-- record it
-- fix it only if it blocks the current feature or creates a clear safety risk
-- otherwise defer it
-
-Avoid huge diffs that make regressions difficult to identify.
-
----
-
-# 54. FEATURE ROADMAP / PRODUCT DIRECTION
-
-The following roadmap is guidance for future work, not permission to implement
-all of it in one task.
-
-## Phase A — Core Shuffle Reliability
-
-Ensure the current randomized shuffle implementation is fully correct and
-well tested.
-
-Focus on:
-
-- shuffle invariants
-- cycle persistence
-- disabled/missing covers
-- manual shuffle semantics
-- state recovery
-
-## Phase B — Live Scheduling
-
-Move from startup-only due processing to a reliable live scheduler.
-
-Focus on:
-
-- background scheduling
-- lifecycle
-- cancellation
-- next-run calculation
-- sleep/restart behaviour
-- no duplicate workers
-
-## Phase C — SteamGridDB 2.0
-
-Improve provider UX and matching.
-
-Focus on:
-
-- multiple game matches
-- correct-game selection
-- stronger matching
-- cover filtering
-- rate-limit handling
-- caching
-- image loading feedback
-
-## Phase D — UI/UX Modernisation
-
-Bring all major plugin windows to a polished Playnite-compatible design.
-
-Focus on:
-
-- dark/light theme compatibility
-- modern cover browser
-- reliable click selection
-- cover preview
-- responsive grid
-- loading/empty/error states
-- keyboard accessibility
-- manager improvements
-
-## Phase E — Effective Settings
-
-Improve global/game configuration semantics.
-
-Focus on:
-
-- true inheritance
-- per-setting overrides
-- reset to global defaults
-- effective settings service
-- migration of existing configuration
-
-## Phase F — Advanced Cover Management
-
-Potential features:
-
-- per-cover enable/disable
-- favourites
-- cover ordering
-- usage statistics
-- least-used shuffle
-- weighted shuffle
-- missing-cover recovery
-- drag/drop local import
-
-Only implement features explicitly selected for the phase.
-
-## Phase G — Playnite Integration Improvements
-
-Potential features:
-
-- improved game-launch shuffle controls
-- better new-game workflow
-- stronger metadata artwork support
-- event-driven integration
-
-## Phase H — Portability and Recovery
-
-Potential features:
-
-- robust import matching
-- backup/restore
-- migration framework
-- recovery tooling
-
-## Phase I — Hardening
-
-Focus on:
-
-- race conditions
-- file locking
-- plugin reloads
-- shutdown
-- corrupted data
-- missing files
-- provider failures
-- large libraries
-- memory usage
-- UI responsiveness
-
-## Phase J — Release Candidate
-
-Focus on:
-
-- CI
-- build verification
-- package verification
-- clean installation
-- upgrade testing
-- documentation
-- release notes
-- final UX polish
-
----
-
-# 55. HIGH-VALUE FUTURE FEATURES
-
-Features that fit the existing product particularly well include:
-
-### Cover preview
-
-Selecting a cover can show a larger preview and metadata before adding it.
-
-### Per-cover enable/disable
-
-Keep 10 covers in the library while choosing which participate in shuffling.
-
-### Favourite covers
-
-Allow users to mark covers as favourites and optionally shuffle only those.
-
-### Usage information
-
-Show usage count and last-used time where useful.
-
-### Least-used shuffle
-
-Prefer covers that have not been shown recently.
-
-### Missing-cover recovery
-
-For provider-backed covers, offer redownload when the local file disappears.
-
-### Drag-and-drop local import
-
-Use the existing validated import pipeline.
-
-### Seasonal cover groups
-
-Possible future extension once the core scheduler and cover model are stable.
-
-### Diagnostics
-
-Provide a safe diagnostic summary containing plugin/version/database/provider
-status without exposing secrets.
-
-Do not implement these merely because they appear here.
-
----
-
-# 56. FEATURES THAT MUST NOT BE ADDED WITHOUT EXPLICIT APPROVAL
-
-Do not introduce major scope changes such as:
-
-- AI-generated artwork
-- a separate Windows background application
-- a tray application
-- a new database technology
-- a custom Playnite theme dependency
-- an additional online provider
-- telemetry/analytics
-- account systems
-- cloud synchronisation
-- automatic network scraping
-
-unless the user explicitly requests them and their architecture/security
-implications are considered first.
-
----
-
-# 57. DEVELOPMENT WORKFLOW
-
-Before coding:
-
-1. Read this entire `CLAUDE.md`.
-2. Inspect the repository tree.
-3. Read the relevant existing implementation.
-4. Read the relevant tests.
-5. Read the README section covering the feature.
-6. Identify what already exists.
-7. Define the smallest coherent change.
-
-During coding:
-
-1. Preserve existing architecture.
-2. Reuse existing services/abstractions.
-3. Keep changes scoped.
-4. Add tests with the implementation.
-5. Avoid unrelated formatting churn.
-6. Check error handling and persistence.
-
-After coding:
-
-1. Build.
-2. Run tests.
-3. Inspect the diff.
-4. Verify no secrets or development files were introduced.
-5. Verify no future-phase feature slipped in.
-6. Update README/documentation when required.
-7. Produce the completion report.
-
----
-
-# 58. REQUIRED SELF-REVIEW BEFORE FINAL RESPONSE
-
-Before claiming a phase is complete, Claude must mentally verify:
-
-```text
-[ ] Did I inspect the existing implementation first?
-[ ] Did I preserve working functionality?
-[ ] Did I work only on the requested scope?
-[ ] Did I preserve user data?
-[ ] Did I preserve schema compatibility?
-[ ] Did I handle errors?
-[ ] Did I add appropriate tests?
-[ ] Did I build the project?
-[ ] Did I run the relevant test suite?
-[ ] Did I check dark/light UI where applicable?
-[ ] Did I check Playnite lifecycle behaviour where applicable?
-[ ] Did I inspect the final diff?
-[ ] Did I avoid introducing secrets?
-[ ] Did I document limitations honestly?
-[ ] Did I provide manual Playnite test steps?
-```
-
-If any answer is no, do not describe the work as fully complete without
-explaining the exception.
-
----
-
-# 59. FINAL RULE
-
-Optimize for a plugin that users can trust.
-
-The goal is not maximum code or maximum features.
-
-The goal is:
-
-- safe artwork management
-- reliable randomisation
-- predictable scheduling
-- excellent Playnite integration
-- polished UI
-- offline-capable existing covers
-- robust persistence
-- clear errors
-- maintainable architecture
-- useful tests
-- easy upgrades
+If any answer is no, say so explicitly — don't call the phase fully
+complete.
+
+## 59. Final Rule
+
+Optimize for a plugin users can trust: safe artwork management, reliable
+randomization, predictable scheduling, excellent Playnite integration,
+polished UI, offline-capable covers, robust persistence, clear errors,
+maintainable architecture, useful tests, easy upgrades.
 
 **Inspect first. Change only what is necessary. Test everything important.
 Protect user data. Never claim functionality that does not actually work.**

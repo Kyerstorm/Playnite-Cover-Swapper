@@ -94,6 +94,12 @@ namespace PluginCoverShuffle
         /// <summary>Runs a read-only maintenance scan at startup and notifies if any covers have a missing file.</summary>
         internal StartupMaintenanceCheckService StartupMaintenanceCheckService { get; private set; }
 
+        /// <summary>Finds managed games (have at least one stored cover) that Playnite now reports as not installed. Read-only.</summary>
+        internal UninstalledGameScanService UninstalledGameScanService { get; private set; }
+
+        /// <summary>Runs a read-only uninstalled-game scan at startup and notifies if any managed games appear uninstalled.</summary>
+        internal StartupUninstalledGameCheckService StartupUninstalledGameCheckService { get; private set; }
+
         // Shared across the plugin's lifetime; SteamGridDbClient never disposes it.
         private readonly HttpClient _httpClient = new HttpClient();
 
@@ -142,6 +148,8 @@ namespace PluginCoverShuffle
                 ImportExportService = new ImportExportService(Repository, Storage, _logger);
                 MaintenanceService = new MaintenanceService(Repository, Storage, layout, _logger);
                 StartupMaintenanceCheckService = new StartupMaintenanceCheckService(MaintenanceService, notificationService, GetGlobalSettings, _logger);
+                UninstalledGameScanService = new UninstalledGameScanService(Repository, gameService, _logger);
+                StartupUninstalledGameCheckService = new StartupUninstalledGameCheckService(UninstalledGameScanService, notificationService, GetGlobalSettings, _logger);
             }
             catch (Exception ex)
             {
@@ -173,7 +181,7 @@ namespace PluginCoverShuffle
 
         public override IEnumerable<MainMenuItem> GetMainMenuItems(GetMainMenuItemsArgs args)
         {
-            if (Manager == null || BulkConfigurationService == null || BulkShuffleService == null || ImportExportService == null || MaintenanceService == null)
+            if (Manager == null || BulkConfigurationService == null || BulkShuffleService == null || ImportExportService == null || MaintenanceService == null || UninstalledGameScanService == null)
             {
                 yield break;
             }
@@ -202,6 +210,8 @@ namespace PluginCoverShuffle
                             ImportService,
                             localFileCoverAddService,
                             GameService,
+                            UninstalledGameScanService,
+                            GameUninstallationService,
                             _logger);
                     }
                     catch (Exception ex)
@@ -242,6 +252,15 @@ namespace PluginCoverShuffle
                 catch (Exception ex)
                 {
                     _logger.Error(ex, "Startup maintenance check failed unexpectedly.");
+                }
+
+                try
+                {
+                    StartupUninstalledGameCheckService?.RunStartupCheck();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "Startup uninstalled-game check failed unexpectedly.");
                 }
             });
         }

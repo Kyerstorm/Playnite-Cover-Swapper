@@ -39,8 +39,9 @@ demand — without a custom Playnite theme.
   manages, with bulk enable/disable/interval actions and configuration
   import/export.
 - **Maintenance** — scan for orphaned cover files, cover records whose file
-  went missing, and cached provider images; nothing is deleted without an
-  explicit, confirmed action.
+  went missing, cached provider images, and managed games Playnite now
+  reports as not installed; nothing is deleted without an explicit,
+  confirmed action.
 
 ## Installation
 
@@ -160,11 +161,20 @@ configuration to line up with the right games.
 From the Cover Shuffle Manager, **Maintenance** scans for:
 
 - cover files on disk no longer referenced by any cover record (orphans),
-- cover records whose file is missing from disk, and
-- cached SteamGridDB images.
+- cover records whose file is missing from disk,
+- cached SteamGridDB images, and
+- managed games (games with at least one stored cover) that Playnite
+  currently reports as not installed.
 
 The scan itself never changes anything; each cleanup action requires you to
-review the findings and confirm it separately.
+review the findings and confirm it separately. For uninstalled games,
+**Restore & remove selected** restores each game's original Playnite cover
+first and only removes Cover Shuffle's own data for it once that restore is
+verified — the same cleanup that already runs automatically when Playnite's
+own uninstall event fires for a game. Cover Shuffle also runs this scan once
+at startup and raises a notification (subject to your notification
+preference) if it finds any candidates, so you don't have to open
+Maintenance manually to notice.
 
 ## Troubleshooting
 

@@ -32,6 +32,13 @@ namespace PluginCoverShuffle.Playnite.Integration
         /// </summary>
         private const string MissingCoversNotificationId = "coverShuffle-maintenance";
 
+        /// <summary>
+        /// Stable id for the aggregate "uninstalled games with covers found"
+        /// notification: not tied to any one game, so repeated startup
+        /// checks replace the previous notification instead of piling up.
+        /// </summary>
+        private const string UninstalledGamesNotificationId = "coverShuffle-uninstalledGames";
+
         public void NotifyShuffled(Guid gameId, string gameName, NotificationPreference preference)
         {
             if (preference != NotificationPreference.NotifyOnShuffle)
@@ -63,6 +70,20 @@ namespace PluginCoverShuffle.Playnite.Integration
             _notifications.Add(
                 MissingCoversNotificationId,
                 $"Cover Shuffle found {missingCount} cover(s) with a missing file. Open the Cover Shuffle Manager's Maintenance tool to review them.",
+                NotificationType.Error);
+        }
+
+        /// <summary>Raised once at startup when the uninstalled-game scan finds one or more managed games that appear uninstalled.</summary>
+        public void NotifyUninstalledGamesWithCovers(int count, NotificationPreference preference)
+        {
+            if (preference == NotificationPreference.Silent)
+            {
+                return;
+            }
+
+            _notifications.Add(
+                UninstalledGamesNotificationId,
+                $"Cover Shuffle found {count} managed game(s) that appear uninstalled. Open the Cover Shuffle Manager's Maintenance tool to review them.",
                 NotificationType.Error);
         }
     }

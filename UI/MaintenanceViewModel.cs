@@ -17,8 +17,9 @@ using PluginCoverShuffle.Services;
 namespace PluginCoverShuffle.UI
 {
     /// <summary>
-    /// Backs the Maintenance window: a health summary plus three selectable
-    /// issue/cache lists built from <see cref="MaintenanceService.Scan"/>.
+    /// Backs the Maintenance window: a health summary plus four selectable
+    /// issue/cache lists, three built from <see cref="MaintenanceService.Scan"/>
+    /// and the fourth (uninstalled games) from <see cref="UninstalledGameScanService.Scan"/>.
     /// Every destructive action operates only on the items the user has
     /// checked and requires an explicit confirmed click - nothing is ever
     /// deleted automatically. Contains no WPF dependency beyond
@@ -30,6 +31,8 @@ namespace PluginCoverShuffle.UI
         private readonly MaintenanceService _service;
         private readonly IDialogsFactory _dialogs;
         private readonly IPlayniteGameService _gameService;
+        private readonly UninstalledGameScanService _uninstalledGameScanService;
+        private readonly GameUninstallationService _gameUninstallationService;
         private MaintenanceReport _report;
 
         public ObservableCollection<MaintenanceIssueItem> MissingCoverItems { get; } = new ObservableCollection<MaintenanceIssueItem>();
@@ -37,6 +40,8 @@ namespace PluginCoverShuffle.UI
         public ObservableCollection<MaintenanceIssueItem> OrphanedFileItems { get; } = new ObservableCollection<MaintenanceIssueItem>();
 
         public ObservableCollection<MaintenanceIssueItem> CacheFileItems { get; } = new ObservableCollection<MaintenanceIssueItem>();
+
+        public ObservableCollection<MaintenanceIssueItem> UninstalledGameItems { get; } = new ObservableCollection<MaintenanceIssueItem>();
 
         public int ManagedGamesCount => _report?.ManagedGamesCount ?? 0;
 
@@ -50,23 +55,27 @@ namespace PluginCoverShuffle.UI
 
         public int CacheFilesCount => CacheFileItems.Count;
 
+        public int UninstalledGamesCount => UninstalledGameItems.Count;
+
         public string CoverStorageSizeText => FormatBytes(_report?.CoverStorageSizeBytes ?? 0);
 
         public string CacheStorageSizeText => FormatBytes(_report?.CacheStorageSizeBytes ?? 0);
 
-        public bool HasIssues => _report != null && _report.HasIssues;
+        public bool HasIssues => (_report != null && _report.HasIssues) || UninstalledGameItems.Count > 0;
 
-        public bool IsHealthy => _report != null && !_report.HasIssues;
+        public bool IsHealthy => !HasIssues;
 
-        public int IssueCount => _report?.IssueCount ?? 0;
+        public int IssueCount => (_report?.IssueCount ?? 0) + UninstalledGameItems.Count;
 
-        public bool IsEmpty => _report != null && _report.IsEmpty;
+        public bool IsEmpty => (_report == null || _report.IsEmpty) && UninstalledGameItems.Count == 0;
 
         public int SelectedMissingCount => MissingCoverItems.Count(i => i.IsSelected);
 
         public int SelectedOrphanedCount => OrphanedFileItems.Count(i => i.IsSelected);
 
         public int SelectedCacheCount => CacheFileItems.Count(i => i.IsSelected);
+
+        public int SelectedUninstalledGamesCount => UninstalledGameItems.Count(i => i.IsSelected);
 
         private string _statusMessage;
 
@@ -76,11 +85,18 @@ namespace PluginCoverShuffle.UI
             set => SetValue(ref _statusMessage, value);
         }
 
-        public MaintenanceViewModel(MaintenanceService service, IDialogsFactory dialogs, IPlayniteGameService gameService = null)
+        public MaintenanceViewModel(
+            MaintenanceService service,
+            IDialogsFactory dialogs,
+            IPlayniteGameService gameService,
+            UninstalledGameScanService uninstalledGameScanService,
+            GameUninstallationService gameUninstallationService)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
             _gameService = gameService;
+            _uninstalledGameScanService = uninstalledGameScanService ?? throw new ArgumentNullException(nameof(uninstalledGameScanService));
+            _gameUninstallationService = gameUninstallationService ?? throw new ArgumentNullException(nameof(gameUninstallationService));
             Scan();
         }
 
@@ -89,6 +105,7 @@ namespace PluginCoverShuffle.UI
             UnhookItems(MissingCoverItems);
             UnhookItems(OrphanedFileItems);
             UnhookItems(CacheFileItems);
+            UnhookItems(UninstalledGameItems);
 
             _report = _service.Scan();
 
@@ -110,6 +127,12 @@ namespace PluginCoverShuffle.UI
                 AddItem(CacheFileItems, MaintenanceIssueItem.ForCacheFile(filePath));
             }
 
+            UninstalledGameItems.Clear();
+            foreach (var candidate in _uninstalledGameScanService.Scan())
+            {
+                AddItem(UninstalledGameItems, MaintenanceIssueItem.ForUninstalledGame(candidate.GameId, candidate.GameName, candidate.CoverCount));
+            }
+
             StatusMessage = null;
             RaiseAllPropertiesChanged();
         }
@@ -119,6 +142,8 @@ namespace PluginCoverShuffle.UI
         public void SelectAllOrphaned(bool selected) => SetAllSelected(OrphanedFileItems, selected);
 
         public void SelectAllCache(bool selected) => SetAllSelected(CacheFileItems, selected);
+
+        public void SelectAllUninstalledGames(bool selected) => SetAllSelected(UninstalledGameItems, selected);
 
         public void RemoveSelectedMissingRecords()
         {
@@ -174,6 +199,40 @@ namespace PluginCoverShuffle.UI
             Scan();
         }
 
+        public void RestoreAndRemoveSelectedUninstalledGames()
+        {
+            var selected = UninstalledGameItems.Where(i => i.IsSelected).ToList();
+            if (selected.Count == 0)
+            {
+                return;
+            }
+
+            if (!Confirm($"Restore the original Playnite cover and remove Cover Shuffle's data for {selected.Count} game(s)? This cannot be undone."))
+            {
+                return;
+            }
+
+            var succeeded = 0;
+            var failed = 0;
+            foreach (var item in selected)
+            {
+                var result = _gameUninstallationService.HandleGameUninstalled(item.GameId.Value, item.GameName);
+                if (result.Success)
+                {
+                    succeeded++;
+                }
+                else
+                {
+                    failed++;
+                }
+            }
+
+            StatusMessage = failed == 0
+                ? $"Cleaned up {succeeded} game(s)."
+                : $"Cleaned up {succeeded} game(s); {failed} failed (see log for details).";
+            Scan();
+        }
+
         private void SetAllSelected(ObservableCollection<MaintenanceIssueItem> items, bool selected)
         {
             foreach (var item in items)
@@ -206,6 +265,7 @@ namespace PluginCoverShuffle.UI
             OnPropertyChanged(nameof(SelectedMissingCount));
             OnPropertyChanged(nameof(SelectedOrphanedCount));
             OnPropertyChanged(nameof(SelectedCacheCount));
+            OnPropertyChanged(nameof(SelectedUninstalledGamesCount));
         }
 
         private string ResolveGameName(Guid? gameId)
@@ -254,6 +314,7 @@ namespace PluginCoverShuffle.UI
             OnPropertyChanged(nameof(MissingFilesCount));
             OnPropertyChanged(nameof(OrphanedFilesCount));
             OnPropertyChanged(nameof(CacheFilesCount));
+            OnPropertyChanged(nameof(UninstalledGamesCount));
             OnPropertyChanged(nameof(CoverStorageSizeText));
             OnPropertyChanged(nameof(CacheStorageSizeText));
             OnPropertyChanged(nameof(HasIssues));
@@ -263,6 +324,7 @@ namespace PluginCoverShuffle.UI
             OnPropertyChanged(nameof(SelectedMissingCount));
             OnPropertyChanged(nameof(SelectedOrphanedCount));
             OnPropertyChanged(nameof(SelectedCacheCount));
+            OnPropertyChanged(nameof(SelectedUninstalledGamesCount));
         }
 
         private bool Confirm(string message)

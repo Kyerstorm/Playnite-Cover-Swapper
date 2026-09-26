@@ -62,9 +62,13 @@
                         <TextBlock Text="{Binding CoverStorageSizeText}" Style="{StaticResource CoverShuffleTitleTextStyle}" FontSize="16" />
                         <TextBlock Text="Cover storage" Style="{StaticResource CoverShuffleSectionLabelTextStyle}" />
                     </StackPanel>
-                    <StackPanel>
+                    <StackPanel Margin="0,0,24,0">
                         <TextBlock Text="{Binding CacheStorageSizeText}" Style="{StaticResource CoverShuffleTitleTextStyle}" FontSize="16" />
                         <TextBlock Text="Cache storage" Style="{StaticResource CoverShuffleSectionLabelTextStyle}" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="{Binding UninstalledGamesCount}" Style="{StaticResource CoverShuffleTitleTextStyle}" FontSize="16" />
+                        <TextBlock Text="Uninstalled games" Style="{StaticResource CoverShuffleSectionLabelTextStyle}" />
                     </StackPanel>
                 </WrapPanel>
             </StackPanel>
@@ -160,7 +164,7 @@
                 </StackPanel>
 
                 <!-- Cache files -->
-                <StackPanel Margin="0,0,0,4" Visibility="{Binding CacheFilesCount, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel Margin="0,0,0,16" Visibility="{Binding CacheFilesCount, Converter={StaticResource BoolToVisibilityConverter}}">
                     <Grid Margin="0,0,0,6">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -187,6 +191,43 @@
                                         <StackPanel Grid.Column="1">
                                             <TextBlock Text="{Binding GameName}" FontWeight="SemiBold" Style="{StaticResource CoverShuffleBodyTextStyle}"
                                                        TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource CoverShuffleMutedTextStyle}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Uninstalled games -->
+                <StackPanel Margin="0,0,0,4" Visibility="{Binding UninstalledGamesCount, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding UninstalledGamesCount, StringFormat='Uninstalled games ({0})'}"
+                                   FontWeight="SemiBold" Style="{StaticResource CoverShuffleBodyTextStyle}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="Select all" Padding="8,3" Margin="0,0,6,0" Click="SelectAllUninstalledButton_Click" />
+                        <Button Grid.Column="2" Content="{Binding SelectedUninstalledGamesCount, StringFormat='Restore &amp; remove selected ({0})'}" Padding="8,3"
+                                Click="RestoreAndRemoveUninstalledButton_Click" />
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding UninstalledGameItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderThickness="1" BorderBrush="{DynamicResource TextBrush}" Opacity="0.9" CornerRadius="4" Padding="10,8" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox Grid.Column="0" VerticalAlignment="Top" Margin="0,2,10,0" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                  AutomationProperties.Name="{Binding GameName, StringFormat='Select issue for {0}'}" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding GameName, StringFormat='&#9888; {0}'}" FontWeight="SemiBold" Foreground="#FFC107"
+                                                       Style="{StaticResource CoverShuffleBodyTextStyle}" TextWrapping="Wrap" />
                                             <TextBlock Text="{Binding Subtitle}" Style="{StaticResource CoverShuffleMutedTextStyle}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                         </StackPanel>
                                     </Grid>

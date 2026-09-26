@@ -19,6 +19,9 @@ namespace PluginCoverShuffle.Tests.Fakes
         /// <summary>When set, <see cref="SetCoverReference"/> throws for this game, simulating an unexpected per-game failure.</summary>
         public Guid? GameIdToThrowOn { get; set; }
 
+        /// <summary>When set, <see cref="IsGameInstalled"/> throws for this game, simulating an unexpected per-game lookup failure.</summary>
+        public Guid? GameIdToThrowOnIsGameInstalled { get; set; }
+
         /// <summary>
         /// Games in this set silently ignore <see cref="SetCoverReference"/>,
         /// mirroring the real <c>PlayniteGameService</c> when the game can no
@@ -73,6 +76,11 @@ namespace PluginCoverShuffle.Tests.Fakes
 
         public bool IsGameInstalled(Guid gameId)
         {
+            if (GameIdToThrowOnIsGameInstalled == gameId)
+            {
+                throw new InvalidOperationException("Simulated failure for test purposes.");
+            }
+
             return !_installedStates.TryGetValue(gameId, out var isInstalled) || isInstalled;
         }
     }

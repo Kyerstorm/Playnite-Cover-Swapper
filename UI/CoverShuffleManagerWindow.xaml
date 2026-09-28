@@ -41,7 +41,7 @@
                 </StackPanel>
                 <StackPanel>
                     <TextBlock Text="{Binding GamesNeedingAttentionCount, StringFormat='&#9888; {0}'}" Style="{StaticResource CoverShuffleTitleTextStyle}" FontSize="18"
-                               Foreground="#FFC107" Visibility="{Binding HasGamesNeedingAttention, Converter={StaticResource BoolToVisibilityConverter}}" />
+                               Foreground="{StaticResource CoverShuffleWarningBrush}" Visibility="{Binding HasGamesNeedingAttention, Converter={StaticResource BoolToVisibilityConverter}}" />
                     <TextBlock Text="{Binding GamesNeedingAttentionCount}" Style="{StaticResource CoverShuffleTitleTextStyle}" FontSize="18"
                                Visibility="{Binding HasGamesNeedingAttention, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}" />
                     <TextBlock Text="Needs attention" Style="{StaticResource CoverShuffleSectionLabelTextStyle}" />

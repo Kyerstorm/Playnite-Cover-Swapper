@@ -77,6 +77,14 @@ namespace PluginCoverShuffle.UI
 
         public int SelectedUninstalledGamesCount => UninstalledGameItems.Count(i => i.IsSelected);
 
+        public bool CanRemoveSelectedMissing => SelectedMissingCount > 0;
+
+        public bool CanDeleteSelectedOrphaned => SelectedOrphanedCount > 0;
+
+        public bool CanDeleteSelectedCache => SelectedCacheCount > 0;
+
+        public bool CanRestoreSelectedUninstalled => SelectedUninstalledGamesCount > 0;
+
         private string _statusMessage;
 
         public string StatusMessage
@@ -266,6 +274,10 @@ namespace PluginCoverShuffle.UI
             OnPropertyChanged(nameof(SelectedOrphanedCount));
             OnPropertyChanged(nameof(SelectedCacheCount));
             OnPropertyChanged(nameof(SelectedUninstalledGamesCount));
+            OnPropertyChanged(nameof(CanRemoveSelectedMissing));
+            OnPropertyChanged(nameof(CanDeleteSelectedOrphaned));
+            OnPropertyChanged(nameof(CanDeleteSelectedCache));
+            OnPropertyChanged(nameof(CanRestoreSelectedUninstalled));
         }
 
         private string ResolveGameName(Guid? gameId)
@@ -325,6 +337,10 @@ namespace PluginCoverShuffle.UI
             OnPropertyChanged(nameof(SelectedOrphanedCount));
             OnPropertyChanged(nameof(SelectedCacheCount));
             OnPropertyChanged(nameof(SelectedUninstalledGamesCount));
+            OnPropertyChanged(nameof(CanRemoveSelectedMissing));
+            OnPropertyChanged(nameof(CanDeleteSelectedOrphaned));
+            OnPropertyChanged(nameof(CanDeleteSelectedCache));
+            OnPropertyChanged(nameof(CanRestoreSelectedUninstalled));
         }
 
         private bool Confirm(string message)

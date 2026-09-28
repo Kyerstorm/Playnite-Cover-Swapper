@@ -60,6 +60,46 @@
     </Style>
 
     <!--
+        Fixed accent colors: deliberate exceptions to the "only TextBrush/
+        TextBrushDark" rule above, same rationale as the pre-existing #FFC107
+        warning usage scattered across MaintenanceWindow.xaml and
+        CoverShuffleManagerWindow.xaml before this dictionary centralized it
+        here. Each clears 3:1 (WCAG's threshold for non-text UI and large
+        text) against both white and a ~#1E1E1E dark background - none
+        reaches 4.5:1 on both, so use them for glyphs, borders, and large
+        text only, never small body text. Re-measure if any is retuned.
+    -->
+    <!-- A deeper amber than the classic #FFC107, which is ~1.6:1 on light themes. This clears 3:1 on both white
+         and dark backgrounds, so it is meant for glyphs and large text; body text should stay on TextBrush. -->
+    <SolidColorBrush x:Key="CoverShuffleWarningBrush" Color="#C28400" />
+    <SolidColorBrush x:Key="CoverShuffleDangerBrush" Color="#D32F2F" />
+    <SolidColorBrush x:Key="CoverShuffleRestorativeBrush" Color="#2E7D32" />
+
+    <!--
+        Shared button sizing (Padding/MinHeight) so every button gets an
+        adequate click/touch target instead of each window setting its own
+        ad hoc Padding. Danger/Restorative variants signal action severity
+        via BorderBrush rather than Background, so Playnite's own themed
+        button chrome (fill/text contrast) is left untouched - see the
+        rationale above for why this dictionary avoids fighting theme brushes.
+    -->
+    <Style x:Key="CoverShuffleButtonStyle" TargetType="Button">
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Margin" Value="0,0,6,6" />
+    </Style>
+
+    <Style x:Key="CoverShuffleDangerButtonStyle" TargetType="Button" BasedOn="{StaticResource CoverShuffleButtonStyle}">
+        <Setter Property="BorderBrush" Value="{StaticResource CoverShuffleDangerBrush}" />
+        <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
+
+    <Style x:Key="CoverShuffleRestorativeButtonStyle" TargetType="Button" BasedOn="{StaticResource CoverShuffleButtonStyle}">
+        <Setter Property="BorderBrush" Value="{StaticResource CoverShuffleRestorativeBrush}" />
+        <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
+
+    <!--
         Whole-card, click-to-select cover tile used by the Manage Covers
         cover grid. Mirrors the proven CoverCardStyle pattern from
         SteamGridDbSearchView.xaml (a ListBoxItem with a fully custom
@@ -120,9 +160,9 @@
                                            Visibility="{Binding IsUnavailable, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}" />
 
                                     <!-- Missing/corrupt indicator: overlays the placeholder tile above. -->
-                                    <TextBlock Text="{Binding UnavailableReasonText, StringFormat='&#9888; {0}'}" FontWeight="Bold" FontSize="12" Foreground="#FFC107"
+                                    <TextBlock FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextBrush}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="110" TextAlignment="Center"
-                                               Visibility="{Binding IsUnavailable, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                               Visibility="{Binding IsUnavailable, Converter={StaticResource BoolToVisibilityConverter}}"><Run Text="&#9888; " Foreground="{StaticResource CoverShuffleWarningBrush}" /><Run Text="{Binding UnavailableReasonText, Mode=OneWay}" /></TextBlock>
 
                                     <!-- Current-cover ribbon: top-left, label-based (not a checkmark) so it can never be confused with the selection badge. -->
                                     <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0"
@@ -219,6 +259,10 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
+                    <!-- HoverTint is a separate self-closing layer behind the row: WPF Opacity applies to a whole subtree,
+                         so fading RowBorder itself on hover would fade the game name and checkbox with it. -->
+                    <Grid>
+                    <Border x:Name="HoverTint" CornerRadius="4" Background="{DynamicResource TextBrush}" Opacity="0" />
                     <Border x:Name="RowBorder" BorderThickness="1" CornerRadius="4" Padding="10,8"
                             BorderBrush="Transparent" Background="Transparent">
                         <Grid>
@@ -239,12 +283,15 @@
                                            Margin="0,1,0,0" TextTrimming="CharacterEllipsis"
                                            Visibility="{Binding NextShuffleText, Converter={StaticResource BoolToVisibilityConverter}}" />
                                 <!-- Needs Attention reason: paired with the "⚠" glyph AND text, never color alone. -->
-                                <TextBlock x:Name="RowWarningText" Text="{Binding AttentionReasonText, StringFormat='&#9888; {0}'}" FontSize="11" FontWeight="SemiBold"
-                                           Foreground="#FFC107" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
-                                           Visibility="{Binding NeedsAttention, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                <!-- Only the glyph carries the warning colour; the reason text uses the theme's own foreground so it
+                                     stays fully readable on light themes, where amber text has too little contrast. -->
+                                <TextBlock x:Name="RowWarningText" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
+                                           Visibility="{Binding NeedsAttention, Converter={StaticResource BoolToVisibilityConverter}}"><Run Text="&#9888; " Foreground="{StaticResource CoverShuffleWarningBrush}" /><Run Text="{Binding AttentionReasonText, Mode=OneWay}" /></TextBlock>
                             </StackPanel>
                         </Grid>
                     </Border>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="RowBorder" Property="BorderBrush" Value="{DynamicResource TextBrush}" />
@@ -258,8 +305,7 @@
                             <Setter TargetName="RowWarningText" Property="Foreground" Value="{DynamicResource TextBrushDark}" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="RowBorder" Property="Background" Value="{DynamicResource TextBrush}" />
-                            <Setter TargetName="RowBorder" Property="Opacity" Value="0.10" />
+                            <Setter TargetName="HoverTint" Property="Opacity" Value="0.10" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="RowBorder" Property="BorderBrush" Value="{DynamicResource TextBrush}" />

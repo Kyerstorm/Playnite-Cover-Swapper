@@ -338,5 +338,75 @@ namespace PluginCoverShuffle.Tests.UI
             Assert.True(viewModel.HasIssues);
             Assert.False(viewModel.IsEmpty);
         }
+
+        [Fact]
+        public void CanRemoveSelectedMissing_FalseUntilAnItemIsSelected()
+        {
+            var gameId = Guid.NewGuid();
+            AddStoredCoverWithMissingFile(gameId);
+            var viewModel = CreateViewModel();
+
+            Assert.False(viewModel.CanRemoveSelectedMissing);
+
+            viewModel.MissingCoverItems.Single().IsSelected = true;
+
+            Assert.True(viewModel.CanRemoveSelectedMissing);
+        }
+
+        [Fact]
+        public void CanDeleteSelectedOrphaned_FalseUntilAnItemIsSelected()
+        {
+            CreateOrphanFile();
+            var viewModel = CreateViewModel();
+
+            Assert.False(viewModel.CanDeleteSelectedOrphaned);
+
+            viewModel.OrphanedFileItems.Single().IsSelected = true;
+
+            Assert.True(viewModel.CanDeleteSelectedOrphaned);
+        }
+
+        [Fact]
+        public void CanDeleteSelectedCache_FalseUntilAnItemIsSelected()
+        {
+            var cachePath = Path.Combine(_layout.CachePath, "cached.png");
+            File.WriteAllBytes(cachePath, new byte[] { 1 });
+            var viewModel = CreateViewModel();
+
+            Assert.False(viewModel.CanDeleteSelectedCache);
+
+            viewModel.CacheFileItems.Single().IsSelected = true;
+
+            Assert.True(viewModel.CanDeleteSelectedCache);
+        }
+
+        [Fact]
+        public void CanRestoreSelectedUninstalled_FalseUntilAnItemIsSelected()
+        {
+            var gameId = Guid.NewGuid();
+            AddStoredCoverWithMissingFile(gameId);
+            _gameService.SeedInstalled(gameId, false);
+            var viewModel = CreateViewModel();
+
+            Assert.False(viewModel.CanRestoreSelectedUninstalled);
+
+            viewModel.UninstalledGameItems.Single().IsSelected = true;
+
+            Assert.True(viewModel.CanRestoreSelectedUninstalled);
+        }
+
+        [Fact]
+        public void CanDeleteSelectedOrphaned_ResetsToFalse_AfterScanNoLongerFindsIt()
+        {
+            var orphanPath = CreateOrphanFile();
+            var viewModel = CreateViewModel();
+            viewModel.OrphanedFileItems.Single().IsSelected = true;
+            Assert.True(viewModel.CanDeleteSelectedOrphaned);
+
+            File.Delete(orphanPath);
+            viewModel.Scan();
+
+            Assert.False(viewModel.CanDeleteSelectedOrphaned);
+        }
     }
 }

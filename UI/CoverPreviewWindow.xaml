@@ -28,15 +28,13 @@
                    Visibility="{Binding StatusMessage, Converter={StaticResource BoolToVisibilityConverter}}" />
 
         <Grid DockPanel.Dock="Top" MinHeight="260" MaxHeight="360" Margin="0,0,0,10">
-            <Border CornerRadius="4" Background="{DynamicResource TextBrush}" Opacity="0.06">
-                <Grid>
-                    <Image Source="{Binding AbsoluteImagePath}" Stretch="Uniform"
-                           Visibility="{Binding IsUnavailable, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}" />
-                    <TextBlock Text="{Binding UnavailableReasonText}" TextWrapping="Wrap" TextAlignment="Center" Margin="16"
-                               Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"
-                               Visibility="{Binding IsUnavailable, Converter={StaticResource BoolToVisibilityConverter}}" />
-                </Grid>
-            </Border>
+            <!-- Tint as a self-closing sibling so its Opacity never applies to the preview image itself. -->
+            <Border CornerRadius="4" Background="{DynamicResource TextBrush}" Opacity="0.06" />
+            <Image Source="{Binding AbsoluteImagePath}" Stretch="Uniform"
+                   Visibility="{Binding IsUnavailable, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}" />
+            <TextBlock Text="{Binding UnavailableReasonText}" TextWrapping="Wrap" TextAlignment="Center" Margin="16"
+                       Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"
+                       Visibility="{Binding IsUnavailable, Converter={StaticResource BoolToVisibilityConverter}}" />
 
             <!-- Previous/Next navigation, only shown when there is more than one cover to move between. -->
             <Button Content="&#8592; Previous" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0"

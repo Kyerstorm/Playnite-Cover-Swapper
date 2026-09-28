@@ -103,11 +103,20 @@ namespace PluginCoverShuffle
         // Shared across the plugin's lifetime; SteamGridDbClient never disposes it.
         private readonly HttpClient _httpClient = new HttpClient();
 
+        // Read from background threads; volatile so a save on the UI thread
+        // (which clears it) is seen promptly.
+        private volatile CoverShuffleSettings _cachedGlobalSettings;
+
+        // One queue for all background shuffle work, so the startup pass and
+        // launch shuffles never run concurrently (see SerialBackgroundQueue).
+        private readonly SerialBackgroundQueue _backgroundQueue;
+
         private readonly CoverShuffleGameMenuFactory _menuFactory;
 
         public CoverShufflePlugin(IPlayniteAPI api) : base(api)
         {
             _logger = new PlayniteLoggerAdapter(LogManager.GetLogger());
+            _backgroundQueue = new SerialBackgroundQueue(_logger);
             Properties = new GenericPluginProperties
             {
                 HasSettings = true
@@ -135,7 +144,7 @@ namespace PluginCoverShuffle
 
                 var notificationService = new CoverShuffleNotificationService(api.Notifications);
                 ScheduledShuffleService = new ScheduledShuffleService(Repository, CoverService, _logger, gameService, notificationService);
-                StartupShuffleService = new StartupShuffleService(Repository, ScheduledShuffleService, GetGlobalSettings, _logger);
+                StartupShuffleService = new StartupShuffleService(Repository, ScheduledShuffleService, _logger, notificationService);
 
                 var newGameConfigurationService = new NewGameConfigurationService(CoverService, PlayniteMetadataProvider, ImportService, GetGlobalSettings, api.Dialogs, _logger);
                 GameInstallationService = new GameInstallationService(Repository, newGameConfigurationService, _logger);
@@ -160,7 +169,26 @@ namespace PluginCoverShuffle
                 CoverService, ImportService, SteamGridDbProvider, PlayniteMetadataProvider, Repository, Storage, api.Dialogs, _logger, GameService, BulkConfigurationService);
         }
 
-        private CoverShuffleSettings GetGlobalSettings() => LoadPluginSettings<CoverShuffleSettings>();
+        /// <summary>
+        /// Cached because effective settings are resolved several times per
+        /// game, and reading them used to re-deserialize the settings file
+        /// from disk every time. The cache is dropped when settings are saved
+        /// (see <see cref="GetSettings"/>) and reloaded on next use. It is
+        /// deliberately never the settings view model's own instance, which
+        /// holds unsaved edits while the settings page is open.
+        /// </summary>
+        private CoverShuffleSettings GetGlobalSettings()
+        {
+            var cached = _cachedGlobalSettings;
+            if (cached != null)
+            {
+                return cached;
+            }
+
+            cached = LoadPluginSettings<CoverShuffleSettings>() ?? new CoverShuffleSettings();
+            _cachedGlobalSettings = cached;
+            return cached;
+        }
 
         private string GetSteamGridDbApiKey() => GetGlobalSettings()?.SteamGridDbApiKey;
 
@@ -234,11 +262,16 @@ namespace PluginCoverShuffle
 
             // Runs off the UI thread so a slow disk or a large number of
             // configured games never delays Playnite's own startup.
-            Task.Run(() =>
+            _backgroundQueue.Enqueue("Startup checks", () =>
             {
                 try
                 {
-                    StartupShuffleService.RunDueShuffles();
+                    // One buffered update: Playnite refreshes its UI once for
+                    // the whole pass instead of once per shuffled game.
+                    using (PlayniteApi.Database.BufferedUpdate())
+                    {
+                        StartupShuffleService.RunStartupShuffles();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -301,15 +334,17 @@ namespace PluginCoverShuffle
 
             // Off the UI thread: this fires synchronously as part of
             // launching the game, and a shuffle is pure file/JSON I/O that
-            // must never be what makes "Play" feel slow.
-            Task.Run(() => GameLaunchShuffleService.HandleGameStarting(gameId));
+            // must never be what makes "Play" feel slow. Queued behind any
+            // startup pass still running rather than racing it.
+            _backgroundQueue.Enqueue("Launch shuffle", () => GameLaunchShuffleService.HandleGameStarting(gameId));
         }
 
         public override ISettings GetSettings(bool firstRunSettings)
         {
             if (_settingsViewModel == null)
             {
-                _settingsViewModel = new CoverShufflePluginSettingsViewModel(this, _logger, ValidateSteamGridDbApiKeyAsync);
+                _settingsViewModel = new CoverShufflePluginSettingsViewModel(
+                    this, _logger, ValidateSteamGridDbApiKeyAsync, onSaved: () => _cachedGlobalSettings = null);
             }
 
             return _settingsViewModel;

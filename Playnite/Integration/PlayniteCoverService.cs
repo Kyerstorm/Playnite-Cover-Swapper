@@ -289,6 +289,9 @@ namespace PluginCoverShuffle.Playnite.Integration
         /// <summary>Whether this game should shuffle its cover each time it launches: its own override, or the global default.</summary>
         public bool GetEffectiveShuffleOnGameLaunch(Guid gameId) => ResolveEffectiveSettings(gameId).ShuffleOnGameLaunch;
 
+        /// <summary>Whether this game should shuffle its cover each time Playnite starts: its own override, or the global default.</summary>
+        public bool GetEffectiveShuffleOnStartup(Guid gameId) => ResolveEffectiveSettings(gameId).ShuffleOnStartup;
+
         /// <summary>
         /// Resolves the effective settings for a game field-by-field: each
         /// setting independently uses the game's own override when present,

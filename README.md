@@ -19,22 +19,21 @@ demand — without a custom Playnite theme.
 - **Safe artwork ownership** — the game's original cover is captured the first
   time Cover Shuffle takes control of a game, and can always be restored.
   Removing a cover from the pool never deletes the underlying file.
-- **Scheduled shuffling** — each game has its own shuffle interval (or
-  inherits the global default). A due shuffle is applied once when Playnite
-  starts; Playnite being closed for a while never causes a pile-up of missed
-  shuffles. A cover whose file has gone missing is skipped rather than
-  applied, so a manually deleted file never leaves a broken cover behind.
+- **Shuffle on startup** — every time Playnite starts, each enabled,
+  installed game gets a new cover (a global setting; on by default).
+  Restarting Playnite twice in a row shuffles twice. A cover whose file has
+  gone missing is skipped rather than applied, so a manually deleted file
+  never leaves a broken cover behind.
 - **Shuffle on game launch** — optionally rotate a game's cover the moment
-  you launch it, per game or globally. Uses the same schedule as interval
-  shuffling, so launching a game also resets its next scheduled shuffle
-  rather than running on a second, separate clock.
+  you launch it (a global setting).
 - **New-game automation** — choose whether newly installed games are left
   alone, prompted about, or automatically prepared for Cover Shuffle.
   "Automatic" pulls in the game's existing Playnite cover art so it has
   something to shuffle right away, and never contacts SteamGridDB on its own.
-- **Notifications** — optionally surface scheduled shuffle activity (success,
+- **Notifications** — optionally surface automatic shuffle activity (success,
   or failure) as a Playnite notification. Configurable per game or globally:
-  silent, errors only, or every shuffle.
+  silent, errors only, or every shuffle. A startup pass posts one summary
+  (e.g. "rotated the covers for 12 games") rather than one per game.
 - **Cover Shuffle Manager** — a searchable list of every game Cover Shuffle
   manages, with bulk enable/disable/interval actions and configuration
   import/export.
@@ -70,10 +69,9 @@ unless it has its own override:
 | Setting | What it controls |
 |---|---|
 | Enable Cover Shuffle | Default enabled state for newly-configured games |
-| Avoid consecutive duplicate covers | Never repeat the currently-showing cover on a shuffle |
-| Shuffle on Playnite startup | Apply a due shuffle once when Playnite starts |
+| Shuffle on Playnite startup | Give every enabled, installed game a new cover each time Playnite starts |
 | Shuffle on game launch | Also shuffle the cover the moment you launch a game |
-| Shuffle interval (hours) | Default time between shuffles |
+| Shuffle interval (hours) | Sets the "next shuffle" time shown in the Manager. It doesn't currently change *when* covers shuffle: that's startup and/or game launch |
 | New game behavior | Do nothing / Ask / Automatic — see [Usage](#usage) |
 | Notifications | Silent / Errors only / Every shuffle |
 | SteamGridDB API key | Optional — see below |
@@ -87,9 +85,15 @@ overridden that setting too. Click **Reset to Global Defaults** in a game's
 Manage Covers window to clear all of its overrides and have it follow every
 current global default again.
 
-Settings are validated when you close the settings page — an interval under
-one minute is rejected with an explanation rather than silently accepted or
-crashing the plugin.
+A shuffle never repeats the cover that's currently showing (as long as the
+game has more than one enabled cover); this is always on, not a setting.
+
+Intervals are entered in hours (e.g. `24` or `1.5`; a comma decimal like `1,5`
+also works if that's your Windows number format) and must be between one
+minute and one year. The same rule applies in the settings page, a game's
+Manage Covers window, and the Manager's bulk **Set Interval**. An invalid value
+is shown as an error and blocks saving; it is never silently replaced with a
+default.
 
 ## SteamGridDB setup
 
@@ -180,8 +184,9 @@ Maintenance manually to notice.
 
 **A game's cover isn't shuffling.**
 Check its **Manage Covers** window: it shows whether Cover Shuffle is
-enabled for that game, how many covers it has, and when the next shuffle is
-due. A game needs at least one enabled cover and to be enabled itself.
+enabled for that game and how many covers it has. A game needs at least one
+enabled cover, to be enabled itself, and to be installed; it then shuffles
+when Playnite starts and/or when you launch it, depending on your settings.
 
 **"This game has no covers configured yet."**
 Add at least one cover via the game's **Add Cover** submenu before
@@ -226,12 +231,10 @@ exceptions to you.
 
 ## Known limitations
 
-- Outside of launching a game, a due shuffle is applied at Playnite startup
-  only — a game left running for days past its interval, without being
-  relaunched, shuffles at the next restart rather than mid-session.
+- Covers only change automatically at Playnite startup or game launch —
+  never mid-session on a timer. The interval setting doesn't affect this.
 - The startup shuffle only applies to installed games; an enabled game that
-  isn't installed stays due and shuffles the next time Playnite starts after
-  it's installed.
+  isn't installed is skipped until it's installed again.
 - The Playnite Metadata provider only picks up artwork already downloaded to
   a local file, not a bare remote URL some library plugins store instead.
 - Configuration import/export is intended for the same Playnite library

@@ -144,11 +144,33 @@ namespace PluginCoverShuffle.Tests.Playnite.Integration
         }
 
         [Fact]
-        public void ManageCoversItem_IsAlwaysPresent()
+        public void ManageCoversItem_IsPresentForASingleGame()
         {
             var items = _factory.BuildMenuItems(new List<Game> { NewGame() }).ToList();
 
             Assert.Contains(items, i => i.Description == "Manage Covers");
+        }
+
+        [Fact]
+        public void BuildMenuItems_ForMultipleGames_OmitsItemsThatOpenAWindowPerGame()
+        {
+            // Regression: selecting N games and choosing Manage Covers or an
+            // Add Cover source opened N modal windows back to back.
+            var items = _factory.BuildMenuItems(new List<Game> { NewGame(), NewGame(), NewGame() }).ToList();
+
+            Assert.DoesNotContain(items, i => i.Description == "Manage Covers");
+            Assert.DoesNotContain(items, i => i.MenuSection.EndsWith("|Add Cover"));
+        }
+
+        [Fact]
+        public void BuildMenuItems_ForMultipleGames_KeepsActionsThatApplyToEveryGame()
+        {
+            var items = _factory.BuildMenuItems(new List<Game> { NewGame(), NewGame() }).ToList();
+
+            Assert.Contains(items, i => i.Description == "Enable Cover Shuffle");
+            Assert.Contains(items, i => i.Description == "Disable Cover Shuffle");
+            Assert.Contains(items, i => i.Description == "Shuffle Now");
+            Assert.Contains(items, i => i.Description == "Restore Original Cover");
         }
 
         [Fact]

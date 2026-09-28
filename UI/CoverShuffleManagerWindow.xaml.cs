@@ -253,13 +253,13 @@ namespace PluginCoverShuffle.UI
 
         private void SetIntervalButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!double.TryParse(IntervalBox.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var hours) || hours <= 0)
+            if (!IntervalHoursText.TryParse(IntervalBox.Text, CultureInfo.CurrentCulture, out var interval, out var error))
             {
-                _dialogs.ShowMessage("Enter a valid number of hours greater than zero.");
+                _dialogs.ShowMessage(error);
                 return;
             }
 
-            _viewModel.SetIntervalForSelected(TimeSpan.FromHours(hours));
+            _viewModel.SetIntervalForSelected(interval);
         }
 
         private void ExportButton_Click(object sender, RoutedEventArgs e) => _viewModel.Export();

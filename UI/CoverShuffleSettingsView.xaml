@@ -7,8 +7,9 @@
              mc:Ignorable="d"
              d:DesignWidth="500">
     <UserControl.Resources>
-        <ui:TimeSpanHoursConverter x:Key="TimeSpanHoursConverter" />
         <ui:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
+        <ui:InverseBoolConverter x:Key="InverseBoolConverter" />
+        <ui:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
     </UserControl.Resources>
     <StackPanel Margin="20">
         <TextBlock Text="Cover Shuffle" FontSize="18" FontWeight="Bold" Margin="0,0,0,10" />
@@ -20,27 +21,24 @@
                   ToolTip="Default state for newly-configured games. A game already enabled/disabled individually is unaffected."
                   Margin="0,0,0,10" />
 
-        <CheckBox Content="Avoid consecutive duplicate covers"
-                  IsChecked="{Binding Settings.AvoidConsecutiveDuplicates}"
-                  ToolTip="When shuffling, never pick the same cover that is already showing (as long as the game has more than one enabled cover)."
-                  Margin="0,0,0,10" />
-
         <CheckBox Content="Shuffle on Playnite startup"
                   IsChecked="{Binding Settings.ShuffleOnStartup}"
-                  ToolTip="Apply any shuffle that came due while Playnite was closed, once, when Playnite starts. Playnite being closed for days never causes a pile-up of missed shuffles."
+                  ToolTip="Give every enabled, installed game a new cover each time Playnite starts."
                   Margin="0,0,0,10" />
 
         <CheckBox Content="Shuffle on game launch"
                   IsChecked="{Binding Settings.ShuffleOnGameLaunch}"
-                  ToolTip="Rotate the cover the moment a game launches. Uses the same schedule as the interval above, so this also resets when the next scheduled shuffle is due."
+                  ToolTip="Rotate a game's cover the moment you launch it."
                   Margin="0,0,0,10" />
 
         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
             <TextBlock Text="Shuffle interval (hours):" VerticalAlignment="Center" Margin="0,0,10,0" />
-            <TextBox Text="{Binding Settings.Interval, Converter={StaticResource TimeSpanHoursConverter}}"
-                     ToolTip="How often a game's cover rotates by default. Must be at least a few minutes; invalid values are rejected when you close settings."
+            <TextBox Text="{Binding IntervalHoursText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="In hours (e.g. 24 or 1.5), between 1 minute and 1 year; invalid values block saving. Sets the 'next shuffle' time shown in the Manager - covers actually change at startup and/or game launch."
                      Width="80" />
         </StackPanel>
+        <TextBlock Text="{Binding IntervalHoursError}" TextWrapping="Wrap" Margin="0,4,0,0" FontWeight="SemiBold"
+                   Visibility="{Binding IntervalHoursError, Converter={StaticResource BoolToVisibilityConverter}}" />
 
         <TextBlock Text="New game behavior:" Margin="0,15,0,5"
                    ToolTip="What happens the first time Cover Shuffle sees a game it doesn't know yet (e.g. right after install)." />
@@ -81,6 +79,7 @@
             <TextBox Text="{Binding Settings.SteamGridDbApiKey, UpdateSourceTrigger=PropertyChanged}"
                      ToolTip="Never logged and never shown in error messages." Width="260" />
             <Button Content="Validate" Margin="10,0,0,0" Click="ValidateApiKeyButton_Click"
+                    IsEnabled="{Binding IsValidatingApiKey, Converter={StaticResource InverseBoolConverter}}"
                     ToolTip="Checks the key against SteamGridDB right now, without saving it." />
         </StackPanel>
         <TextBlock Text="{Binding ApiKeyValidationStatus}" Margin="0,5,0,0" Opacity="0.8" />

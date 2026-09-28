@@ -32,6 +32,7 @@ namespace PluginCoverShuffle.UI
         private readonly ICoverShuffleLogger _logger;
         private IDialogsFactory _dialogs;
         private Window _owningWindow;
+        private bool _isReplacingCover;
 
         public ManageCoversWindow(
             CoverManagementViewModel viewModel,
@@ -127,7 +128,7 @@ namespace PluginCoverShuffle.UI
 
         private void RefreshIntervalBox()
         {
-            IntervalBox.Text = _viewModel.CurrentIntervalHours.ToString(CultureInfo.InvariantCulture);
+            IntervalBox.Text = IntervalHoursText.Format(TimeSpan.FromHours(_viewModel.CurrentIntervalHours));
         }
 
         private void ToggleEnabledButton_Click(object sender, RoutedEventArgs e)
@@ -138,13 +139,13 @@ namespace PluginCoverShuffle.UI
 
         private void ApplyIntervalButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!double.TryParse(IntervalBox.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var hours) || hours <= 0)
+            if (!IntervalHoursText.TryParse(IntervalBox.Text, CultureInfo.CurrentCulture, out var interval, out var error))
             {
-                _dialogs?.ShowMessage("Enter a valid number of hours greater than zero.");
+                _dialogs?.ShowMessage(error);
                 return;
             }
 
-            _viewModel.SetInterval(TimeSpan.FromHours(hours));
+            _viewModel.SetInterval(interval);
             RefreshIntervalBox();
         }
 
@@ -246,21 +247,54 @@ namespace PluginCoverShuffle.UI
                 return;
             }
 
+            if (_isReplacingCover)
+            {
+                return;
+            }
+
             var coverId = cover.CoverId;
+            var gameId = _viewModel.GameId;
             var filePath = _dialogs.SelectImagefile();
             if (string.IsNullOrWhiteSpace(filePath))
             {
                 return;
             }
 
-            var result = await System.Threading.Tasks.Task.Run(
-                () => _localFileCoverAddService.ReplaceFromFile(_viewModel.GameId, coverId, filePath));
-            if (!result.IsSuccess)
+            await RunCoverReplacementAsync("Replacing the cover file", () =>
             {
-                _dialogs.ShowMessage(result.Message);
-            }
+                var result = _localFileCoverAddService.ReplaceFromFile(gameId, coverId, filePath);
+                return result.IsSuccess ? null : result.Message;
+            });
+        }
 
-            _viewModel.Reload();
+        /// <summary>
+        /// Shared wrapper for the file-replacing actions, which are started
+        /// from async void handlers: an exception escaping one would crash
+        /// Playnite, and a second click while the first is still copying
+        /// could overwrite the same cover file concurrently.
+        /// </summary>
+        /// <param name="replace">Runs off the UI thread; returns a user-facing error, or null on success.</param>
+        private async System.Threading.Tasks.Task RunCoverReplacementAsync(string operationDescription, Func<string> replace)
+        {
+            _isReplacingCover = true;
+            try
+            {
+                var errorMessage = await System.Threading.Tasks.Task.Run(replace);
+                if (errorMessage != null)
+                {
+                    _dialogs?.ShowMessage(errorMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, $"{operationDescription} failed unexpectedly for game '{_viewModel.GameId}'.");
+                _dialogs?.ShowMessage("The cover could not be replaced. See the Playnite log for details.");
+            }
+            finally
+            {
+                _isReplacingCover = false;
+                _viewModel.Reload();
+            }
         }
 
         /// <summary>
@@ -356,7 +390,7 @@ namespace PluginCoverShuffle.UI
         private async void RestoreFromSteamGridDbForSelectedButton_Click(object sender, RoutedEventArgs e)
         {
             var steamGridDbProvider = _steamGridDbProvider as SteamGridDbCoverProvider;
-            if (steamGridDbProvider == null || _importService == null || _dialogs == null || _viewModel.SelectedCover == null)
+            if (steamGridDbProvider == null || _importService == null || _dialogs == null || _viewModel.SelectedCover == null || _isReplacingCover)
             {
                 return;
             }
@@ -364,7 +398,7 @@ namespace PluginCoverShuffle.UI
             var coverId = _viewModel.SelectedCover.CoverId;
             var gameId = _viewModel.GameId;
 
-            var errorMessage = await System.Threading.Tasks.Task.Run(() =>
+            await RunCoverReplacementAsync("Restoring a cover from the SteamGridDB cache", () =>
             {
                 var cover = _repository.GetCover(gameId, coverId);
                 if (cover == null)
@@ -380,13 +414,6 @@ namespace PluginCoverShuffle.UI
                 var result = _importService.ReplaceFile(gameId, coverId, cachedPath);
                 return result.IsSuccess ? null : result.Message;
             });
-
-            if (errorMessage != null)
-            {
-                _dialogs.ShowMessage(errorMessage);
-            }
-
-            _viewModel.Reload();
         }
     }
 }

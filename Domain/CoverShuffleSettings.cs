@@ -17,7 +17,12 @@ namespace PluginCoverShuffle.Domain
         /// <summary>Default shuffle trigger mode.</summary>
         public ShuffleMode Mode { get; set; } = ShuffleMode.Interval;
 
-        /// <summary>Whether the shuffle engine should avoid repeating the immediately previous cover.</summary>
+        /// <summary>
+        /// Not read by anything: never repeating the current cover is a fixed
+        /// invariant of the shuffle engine, not an option, so the settings UI
+        /// no longer shows it. Kept only so existing settings files keep
+        /// round-tripping unchanged.
+        /// </summary>
         public bool AvoidConsecutiveDuplicates { get; set; } = true;
 
         /// <summary>Whether a due shuffle should be applied when Playnite starts.</summary>

@@ -75,5 +75,40 @@ namespace PluginCoverShuffle.Playnite.Integration
 
             _notificationService?.NotifyShuffled(gameId, gameName, preference);
         }
+
+        /// <summary>
+        /// The Playnite-startup trigger: shuffles once, every startup, for an
+        /// enabled, installed game whose effective "shuffle on startup" is on
+        /// (its own override, or the global default). Deliberately ignores
+        /// whether the interval is due - startup shuffling means a fresh cover
+        /// each time Playnite opens. Never notifies itself: the caller
+        /// aggregates every game's result into one notification, so a large
+        /// library doesn't produce one notification per game.
+        /// </summary>
+        public ShuffleAttempt ShuffleForStartup(Guid gameId)
+        {
+            if (!_coverService.IsEnabled(gameId) || !_coverService.GetEffectiveShuffleOnStartup(gameId))
+            {
+                return ShuffleAttempt.Skipped;
+            }
+
+            if (_gameService != null && !_gameService.IsGameInstalled(gameId))
+            {
+                _logger.Debug($"Startup shuffle skipped for game '{gameId}': not installed.");
+                return ShuffleAttempt.Skipped;
+            }
+
+            var result = _coverService.ShuffleToNextCover(gameId);
+            var gameName = _gameService?.GetGameName(gameId) ?? gameId.ToString();
+            var preference = _coverService.GetEffectiveNotificationPreference(gameId);
+
+            if (!result.Success)
+            {
+                _logger.Debug($"Startup shuffle skipped for game '{gameId}': {result.Message}");
+                return ShuffleAttempt.Failed(gameName, result.Message, preference);
+            }
+
+            return ShuffleAttempt.Shuffled(gameName, preference);
+        }
     }
 }

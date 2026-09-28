@@ -5,6 +5,7 @@ using System.Windows;
 using PluginCoverShuffle.Domain;
 using PluginCoverShuffle.Infrastructure.Persistence;
 using PluginCoverShuffle.Infrastructure.Storage;
+using PluginCoverShuffle.Playnite.Integration;
 using PluginCoverShuffle.Services;
 using PluginCoverShuffle.Tests.Fakes;
 using PluginCoverShuffle.UI;
@@ -21,6 +22,8 @@ namespace PluginCoverShuffle.Tests.UI
         private readonly MaintenanceService _service;
         private readonly FakeDialogsFactory _dialogs = new FakeDialogsFactory();
         private readonly FakePlayniteGameService _gameService = new FakePlayniteGameService();
+        private readonly UninstalledGameScanService _uninstalledGameScanService;
+        private readonly GameUninstallationService _gameUninstallationService;
 
         public MaintenanceViewModelTests()
         {
@@ -31,6 +34,13 @@ namespace PluginCoverShuffle.Tests.UI
             _layout.EnsureDirectoriesExist();
             _storage = new CoverStorage(_layout);
             _service = new MaintenanceService(_repository, _storage, _layout, new FakeCoverShuffleLogger());
+            _uninstalledGameScanService = new UninstalledGameScanService(_repository, _gameService, new FakeCoverShuffleLogger());
+            _gameUninstallationService = new GameUninstallationService(_repository, _storage, _gameService, new FakeCoverShuffleLogger());
+        }
+
+        private MaintenanceViewModel CreateViewModel()
+        {
+            return new MaintenanceViewModel(_service, _dialogs, _gameService, _uninstalledGameScanService, _gameUninstallationService);
         }
 
         public void Dispose()
@@ -76,7 +86,7 @@ namespace PluginCoverShuffle.Tests.UI
         {
             var orphanPath = CreateOrphanFile();
 
-            var viewModel = new MaintenanceViewModel(_service, _dialogs);
+            var viewModel = CreateViewModel();
 
             Assert.Contains(viewModel.OrphanedFileItems, i => i.FilePath == orphanPath);
             Assert.False(viewModel.IsEmpty);
@@ -90,7 +100,7 @@ namespace PluginCoverShuffle.Tests.UI
             _gameService.SeedGameName(gameId, "Fallout 4");
             AddStoredCoverWithMissingFile(gameId);
 
-            var viewModel = new MaintenanceViewModel(_service, _dialogs, _gameService);
+            var viewModel = CreateViewModel();
 
             Assert.Contains(viewModel.MissingCoverItems, i => i.GameName == "Fallout 4");
         }
@@ -99,7 +109,7 @@ namespace PluginCoverShuffle.Tests.UI
         public void DeleteSelectedOrphanedFiles_WithNothingSelected_DoesNothingAndDoesNotPrompt()
         {
             var orphanPath = CreateOrphanFile();
-            var viewModel = new MaintenanceViewModel(_service, _dialogs);
+            var viewModel = CreateViewModel();
 
             viewModel.DeleteSelectedOrphanedFiles();
 
@@ -111,7 +121,7 @@ namespace PluginCoverShuffle.Tests.UI
         public void DeleteSelectedOrphanedFiles_WhenUserDeclines_LeavesFilesInPlace()
         {
             var orphanPath = CreateOrphanFile();
-            var viewModel = new MaintenanceViewModel(_service, _dialogs);
+            var viewModel = CreateViewModel();
             viewModel.OrphanedFileItems.Single().IsSelected = true;
             _dialogs.NextMessageBoxResult = MessageBoxResult.No;
 
@@ -125,7 +135,7 @@ namespace PluginCoverShuffle.Tests.UI
         {
             var keepPath = CreateOrphanFile();
             var deletePath = CreateOrphanFile();
-            var viewModel = new MaintenanceViewModel(_service, _dialogs);
+            var viewModel = CreateViewModel();
             viewModel.OrphanedFileItems.Single(i => i.FilePath == deletePath).IsSelected = true;
             _dialogs.NextMessageBoxResult = MessageBoxResult.Yes;
 
@@ -140,7 +150,7 @@ namespace PluginCoverShuffle.Tests.UI
         public void DeleteSelectedOrphanedFiles_AlwaysAsksForConfirmationFirst()
         {
             CreateOrphanFile();
-            var viewModel = new MaintenanceViewModel(_service, _dialogs);
+            var viewModel = CreateViewModel();
             viewModel.OrphanedFileItems.Single().IsSelected = true;
 
             viewModel.DeleteSelectedOrphanedFiles();
@@ -154,7 +164,7 @@ namespace PluginCoverShuffle.Tests.UI
             var gameId = Guid.NewGuid();
             var keepCover = AddStoredCoverWithMissingFile(gameId);
             var removeCover = AddStoredCoverWithMissingFile(gameId);
-            var viewModel = new MaintenanceViewModel(_service, _dialogs);
+            var viewModel = CreateViewModel();
             viewModel.MissingCoverItems.Single(i => i.Cover.CoverId == removeCover.CoverId).IsSelected = true;
             _dialogs.NextMessageBoxResult = MessageBoxResult.Yes;
 
@@ -172,7 +182,7 @@ namespace PluginCoverShuffle.Tests.UI
             var deletePath = Path.Combine(_layout.CachePath, "delete.png");
             File.WriteAllBytes(keepPath, new byte[] { 1 });
             File.WriteAllBytes(deletePath, new byte[] { 2 });
-            var viewModel = new MaintenanceViewModel(_service, _dialogs);
+            var viewModel = CreateViewModel();
             viewModel.CacheFileItems.Single(i => i.FilePath == deletePath).IsSelected = true;
             _dialogs.NextMessageBoxResult = MessageBoxResult.Yes;
 
@@ -187,7 +197,7 @@ namespace PluginCoverShuffle.Tests.UI
         {
             CreateOrphanFile();
             CreateOrphanFile();
-            var viewModel = new MaintenanceViewModel(_service, _dialogs);
+            var viewModel = CreateViewModel();
 
             viewModel.SelectAllOrphaned(true);
 
@@ -202,7 +212,7 @@ namespace PluginCoverShuffle.Tests.UI
         public void SelectedCount_UpdatesWhenAnItemIsToggled()
         {
             CreateOrphanFile();
-            var viewModel = new MaintenanceViewModel(_service, _dialogs);
+            var viewModel = CreateViewModel();
 
             Assert.Equal(0, viewModel.SelectedOrphanedCount);
 
@@ -214,7 +224,7 @@ namespace PluginCoverShuffle.Tests.UI
         [Fact]
         public void IsEmpty_OnCleanState_IsTrue()
         {
-            var viewModel = new MaintenanceViewModel(_service, _dialogs);
+            var viewModel = CreateViewModel();
 
             Assert.True(viewModel.IsEmpty);
             Assert.True(viewModel.IsHealthy);
@@ -224,12 +234,179 @@ namespace PluginCoverShuffle.Tests.UI
         public void Scan_NeverDeletesAnything_ByItself()
         {
             var orphanPath = CreateOrphanFile();
-            var viewModel = new MaintenanceViewModel(_service, _dialogs);
+            var viewModel = CreateViewModel();
 
             viewModel.Scan();
             viewModel.Scan();
 
             Assert.True(File.Exists(orphanPath));
+        }
+
+        [Fact]
+        public void Constructor_ScansImmediately_PopulatesUninstalledGameItems()
+        {
+            var gameId = Guid.NewGuid();
+            AddStoredCoverWithMissingFile(gameId);
+            _gameService.SeedInstalled(gameId, false);
+
+            var viewModel = CreateViewModel();
+
+            Assert.Contains(viewModel.UninstalledGameItems, i => i.GameId == gameId);
+        }
+
+        [Fact]
+        public void UninstalledGameItem_ShowsResolvedGameName()
+        {
+            var gameId = Guid.NewGuid();
+            AddStoredCoverWithMissingFile(gameId);
+            _gameService.SeedInstalled(gameId, false);
+            _gameService.SeedGameName(gameId, "Fallout 4");
+
+            var viewModel = CreateViewModel();
+
+            Assert.Contains(viewModel.UninstalledGameItems, i => i.GameName == "Fallout 4");
+        }
+
+        [Fact]
+        public void RestoreAndRemoveSelectedUninstalledGames_WithNothingSelected_DoesNothingAndDoesNotPrompt()
+        {
+            var gameId = Guid.NewGuid();
+            AddStoredCoverWithMissingFile(gameId);
+            _gameService.SeedInstalled(gameId, false);
+            var viewModel = CreateViewModel();
+
+            viewModel.RestoreAndRemoveSelectedUninstalledGames();
+
+            Assert.Empty(_dialogs.ShownMessages);
+            Assert.Contains(viewModel.UninstalledGameItems, i => i.GameId == gameId);
+        }
+
+        [Fact]
+        public void RestoreAndRemoveSelectedUninstalledGames_WhenUserCancels_DoesNotRemoveTheRecord()
+        {
+            var gameId = Guid.NewGuid();
+            AddStoredCoverWithMissingFile(gameId);
+            _gameService.SeedInstalled(gameId, false);
+            var viewModel = CreateViewModel();
+            viewModel.UninstalledGameItems.Single().IsSelected = true;
+            _dialogs.NextMessageBoxResult = MessageBoxResult.No;
+
+            viewModel.RestoreAndRemoveSelectedUninstalledGames();
+
+            Assert.NotEmpty(_repository.GetCovers(gameId));
+        }
+
+        [Fact]
+        public void RestoreAndRemoveSelectedUninstalledGames_WhenConfirmed_CallsHandleGameUninstalledForEachSelectedGame()
+        {
+            var gameId = Guid.NewGuid();
+            AddStoredCoverWithMissingFile(gameId);
+            _gameService.SeedInstalled(gameId, false);
+            var viewModel = CreateViewModel();
+            viewModel.UninstalledGameItems.Single().IsSelected = true;
+            _dialogs.NextMessageBoxResult = MessageBoxResult.Yes;
+
+            viewModel.RestoreAndRemoveSelectedUninstalledGames();
+
+            Assert.Empty(_repository.GetCovers(gameId));
+        }
+
+        [Fact]
+        public void RestoreAndRemoveSelectedUninstalledGames_AfterSuccess_RemovesTheGameFromTheList()
+        {
+            var gameId = Guid.NewGuid();
+            AddStoredCoverWithMissingFile(gameId);
+            _gameService.SeedInstalled(gameId, false);
+            var viewModel = CreateViewModel();
+            viewModel.UninstalledGameItems.Single().IsSelected = true;
+            _dialogs.NextMessageBoxResult = MessageBoxResult.Yes;
+
+            viewModel.RestoreAndRemoveSelectedUninstalledGames();
+
+            Assert.DoesNotContain(viewModel.UninstalledGameItems, i => i.GameId == gameId);
+        }
+
+        [Fact]
+        public void HasIssues_And_IsEmpty_AccountForUninstalledGameItems()
+        {
+            var gameId = Guid.NewGuid();
+            AddStoredCoverWithMissingFile(gameId);
+            _gameService.SeedInstalled(gameId, false);
+
+            var viewModel = CreateViewModel();
+
+            Assert.True(viewModel.HasIssues);
+            Assert.False(viewModel.IsEmpty);
+        }
+
+        [Fact]
+        public void CanRemoveSelectedMissing_FalseUntilAnItemIsSelected()
+        {
+            var gameId = Guid.NewGuid();
+            AddStoredCoverWithMissingFile(gameId);
+            var viewModel = CreateViewModel();
+
+            Assert.False(viewModel.CanRemoveSelectedMissing);
+
+            viewModel.MissingCoverItems.Single().IsSelected = true;
+
+            Assert.True(viewModel.CanRemoveSelectedMissing);
+        }
+
+        [Fact]
+        public void CanDeleteSelectedOrphaned_FalseUntilAnItemIsSelected()
+        {
+            CreateOrphanFile();
+            var viewModel = CreateViewModel();
+
+            Assert.False(viewModel.CanDeleteSelectedOrphaned);
+
+            viewModel.OrphanedFileItems.Single().IsSelected = true;
+
+            Assert.True(viewModel.CanDeleteSelectedOrphaned);
+        }
+
+        [Fact]
+        public void CanDeleteSelectedCache_FalseUntilAnItemIsSelected()
+        {
+            var cachePath = Path.Combine(_layout.CachePath, "cached.png");
+            File.WriteAllBytes(cachePath, new byte[] { 1 });
+            var viewModel = CreateViewModel();
+
+            Assert.False(viewModel.CanDeleteSelectedCache);
+
+            viewModel.CacheFileItems.Single().IsSelected = true;
+
+            Assert.True(viewModel.CanDeleteSelectedCache);
+        }
+
+        [Fact]
+        public void CanRestoreSelectedUninstalled_FalseUntilAnItemIsSelected()
+        {
+            var gameId = Guid.NewGuid();
+            AddStoredCoverWithMissingFile(gameId);
+            _gameService.SeedInstalled(gameId, false);
+            var viewModel = CreateViewModel();
+
+            Assert.False(viewModel.CanRestoreSelectedUninstalled);
+
+            viewModel.UninstalledGameItems.Single().IsSelected = true;
+
+            Assert.True(viewModel.CanRestoreSelectedUninstalled);
+        }
+
+        [Fact]
+        public void CanDeleteSelectedOrphaned_ResetsToFalse_AfterScanNoLongerFindsIt()
+        {
+            var orphanPath = CreateOrphanFile();
+            var viewModel = CreateViewModel();
+            viewModel.OrphanedFileItems.Single().IsSelected = true;
+            Assert.True(viewModel.CanDeleteSelectedOrphaned);
+
+            File.Delete(orphanPath);
+            viewModel.Scan();
+
+            Assert.False(viewModel.CanDeleteSelectedOrphaned);
         }
     }
 }

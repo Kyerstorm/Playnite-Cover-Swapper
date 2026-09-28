@@ -39,9 +39,9 @@
                                             <Image x:Name="ArtworkImage" Source="{Binding PreviewPath}" Stretch="Uniform" SnapsToDevicePixels="True" />
 
                                             <!-- Unavailable overlay: the artwork Playnite recorded no longer exists on disk. -->
-                                            <TextBlock Text="&#9888; Unavailable" FontWeight="Bold" FontSize="12" Foreground="#FFC107"
+                                            <TextBlock FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextBrush}"
                                                        HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="100"
-                                                       Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}" />
+                                                       Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"><Run Text="&#9888; " Foreground="{StaticResource CoverShuffleWarningBrush}" /><Run Text="Unavailable" /></TextBlock>
 
                                             <!-- Added ribbon -->
                                             <Border HorizontalAlignment="Left" VerticalAlignment="Top" Background="{DynamicResource TextBrush}" Opacity="0.85"
@@ -55,7 +55,7 @@
                                         <TextBlock Text="Playnite Metadata" FontSize="11" Opacity="0.65" HorizontalAlignment="Center"
                                                    Foreground="{DynamicResource TextBrush}" Margin="0,1,0,0" />
                                         <TextBlock Text="{Binding StatusText}" FontSize="11" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"
-                                                   Foreground="#FFC107" Margin="0,2,0,0"
+                                                   Foreground="{DynamicResource TextBrush}" Margin="0,2,0,0"
                                                    Visibility="{Binding StatusText, Converter={StaticResource BoolToVisibilityConverter}}" />
 
                                         <!-- Add / Try Again action: hidden once already added, since the ribbon above already says so. -->
@@ -131,7 +131,7 @@
             <TextBlock Text="{Binding SlotsSummaryText}" Style="{StaticResource CoverShuffleBodyTextStyle}"
                        Visibility="{Binding IsAtCoverLimit, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}" />
             <StackPanel Visibility="{Binding IsAtCoverLimit, Converter={StaticResource BoolToVisibilityConverter}}">
-                <TextBlock Text="Cover limit reached" FontWeight="Bold" Foreground="#FFC107" />
+                <TextBlock FontWeight="Bold" Foreground="{DynamicResource TextBrush}"><Run Text="&#9888; " Foreground="{StaticResource CoverShuffleWarningBrush}" /><Run Text="Cover limit reached" /></TextBlock>
                 <TextBlock Text="{Binding CoverLimitMessage}" Style="{StaticResource CoverShuffleMutedTextStyle}" TextWrapping="Wrap" Margin="0,2,0,0" />
             </StackPanel>
         </StackPanel>

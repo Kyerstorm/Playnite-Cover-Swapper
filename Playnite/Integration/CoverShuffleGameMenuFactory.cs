@@ -78,7 +78,8 @@ namespace PluginCoverShuffle.Playnite.Integration
             }
 
             // Visibility reflects state only for a single selected game; a
-            // multi-selection shows every action and applies it per game.
+            // multi-selection shows every non-window action and applies it
+            // per game.
             var singleGameId = games?.Count == 1 ? games[0].Id : (Guid?)null;
             var isEnabled = singleGameId.HasValue && _coverService.IsEnabled(singleGameId.Value);
             var hasSavedOriginal = singleGameId.HasValue && _coverService.HasSavedOriginalCover(singleGameId.Value);
@@ -105,41 +106,47 @@ namespace PluginCoverShuffle.Playnite.Integration
                 });
             }
 
-            items.Add(new GameMenuItem
-            {
-                Description = "Local File",
-                MenuSection = MenuSectionName + "|Add Cover",
-                Action = args => ForEachGame(args, AddLocalFileCover)
-            });
-
-            if (_steamGridDbProvider != null)
+            // Add Cover and Manage Covers each open a modal window per game,
+            // so on a multi-selection they would chain one dialog after
+            // another; they are only offered for a single selected game.
+            if (singleGameId.HasValue)
             {
                 items.Add(new GameMenuItem
                 {
-                    Description = "SteamGridDB",
+                    Description = "Local File",
                     MenuSection = MenuSectionName + "|Add Cover",
-                    Action = args => ForEachGame(args, id =>
-                    {
-                        var gameName = _gameService?.GetGameName(id);
-                        var viewModel = new SteamGridDbSearchViewModel(id, gameName, _steamGridDbProvider, _importService, _repository, _logger);
-                        SteamGridDbSearchView.ShowDialog(_dialogs, viewModel);
-                    })
+                    Action = args => ForEachGame(args, AddLocalFileCover)
                 });
-            }
 
-            if (_playniteMetadataProvider != null)
-            {
-                items.Add(new GameMenuItem
+                if (_steamGridDbProvider != null)
                 {
-                    Description = "Playnite Metadata",
-                    MenuSection = MenuSectionName + "|Add Cover",
-                    Action = args => ForEachGame(args, id =>
+                    items.Add(new GameMenuItem
                     {
-                        var gameName = _gameService?.GetGameName(id);
-                        var viewModel = new PlayniteMetadataCoverViewModel(id, gameName, _playniteMetadataProvider, _importService, _repository, _logger);
-                        new PlayniteMetadataCoverWindow(viewModel).ShowDialog();
-                    })
-                });
+                        Description = "SteamGridDB",
+                        MenuSection = MenuSectionName + "|Add Cover",
+                        Action = args => ForEachGame(args, id =>
+                        {
+                            var gameName = _gameService?.GetGameName(id);
+                            var viewModel = new SteamGridDbSearchViewModel(id, gameName, _steamGridDbProvider, _importService, _repository, _logger);
+                            SteamGridDbSearchView.ShowDialog(_dialogs, viewModel);
+                        })
+                    });
+                }
+
+                if (_playniteMetadataProvider != null)
+                {
+                    items.Add(new GameMenuItem
+                    {
+                        Description = "Playnite Metadata",
+                        MenuSection = MenuSectionName + "|Add Cover",
+                        Action = args => ForEachGame(args, id =>
+                        {
+                            var gameName = _gameService?.GetGameName(id);
+                            var viewModel = new PlayniteMetadataCoverViewModel(id, gameName, _playniteMetadataProvider, _importService, _repository, _logger);
+                            new PlayniteMetadataCoverWindow(viewModel).ShowDialog();
+                        })
+                    });
+                }
             }
 
             items.Add(new GameMenuItem
@@ -165,25 +172,28 @@ namespace PluginCoverShuffle.Playnite.Integration
                 }
             });
 
-            items.Add(new GameMenuItem
+            if (singleGameId.HasValue)
             {
-                Description = "Manage Covers",
-                MenuSection = MenuSectionName,
-                Action = args => ForEachGame(args, id =>
+                items.Add(new GameMenuItem
                 {
-                    var gameName = _gameService?.GetGameName(id);
-                    var viewModel = new CoverManagementViewModel(id, gameName, _repository, _storage, _coverService, _bulkConfigurationService);
-                    ManageCoversWindow.ShowDialog(
-                        _dialogs,
-                        viewModel,
-                        _repository,
-                        _steamGridDbProvider,
-                        _playniteMetadataProvider,
-                        _importService,
-                        _localFileCoverAddService,
-                        _logger);
-                })
-            });
+                    Description = "Manage Covers",
+                    MenuSection = MenuSectionName,
+                    Action = args => ForEachGame(args, id =>
+                    {
+                        var gameName = _gameService?.GetGameName(id);
+                        var viewModel = new CoverManagementViewModel(id, gameName, _repository, _storage, _coverService, _bulkConfigurationService);
+                        ManageCoversWindow.ShowDialog(
+                            _dialogs,
+                            viewModel,
+                            _repository,
+                            _steamGridDbProvider,
+                            _playniteMetadataProvider,
+                            _importService,
+                            _localFileCoverAddService,
+                            _logger);
+                    })
+                });
+            }
 
             if (!singleGameId.HasValue || hasSavedOriginal)
             {

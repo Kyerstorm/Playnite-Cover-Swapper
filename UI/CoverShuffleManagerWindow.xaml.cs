@@ -41,6 +41,8 @@ namespace PluginCoverShuffle.UI
         private readonly CoverImportService _importService;
         private readonly LocalFileCoverAddService _localFileCoverAddService;
         private readonly IPlayniteGameService _gameService;
+        private readonly UninstalledGameScanService _uninstalledGameScanService;
+        private readonly GameUninstallationService _gameUninstallationService;
         private readonly ICoverShuffleLogger _logger;
 
         private CoverManagementViewModel _detailViewModel;
@@ -60,6 +62,8 @@ namespace PluginCoverShuffle.UI
             CoverImportService importService,
             LocalFileCoverAddService localFileCoverAddService,
             IPlayniteGameService gameService,
+            UninstalledGameScanService uninstalledGameScanService,
+            GameUninstallationService gameUninstallationService,
             ICoverShuffleLogger logger)
         {
             InitializeComponent();
@@ -76,6 +80,8 @@ namespace PluginCoverShuffle.UI
             _importService = importService;
             _localFileCoverAddService = localFileCoverAddService;
             _gameService = gameService;
+            _uninstalledGameScanService = uninstalledGameScanService ?? throw new ArgumentNullException(nameof(uninstalledGameScanService));
+            _gameUninstallationService = gameUninstallationService ?? throw new ArgumentNullException(nameof(gameUninstallationService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             DataContext = _viewModel;
         }
@@ -95,6 +101,8 @@ namespace PluginCoverShuffle.UI
             CoverImportService importService,
             LocalFileCoverAddService localFileCoverAddService,
             IPlayniteGameService gameService,
+            UninstalledGameScanService uninstalledGameScanService,
+            GameUninstallationService gameUninstallationService,
             ICoverShuffleLogger logger)
         {
             if (dialogs == null)
@@ -104,7 +112,8 @@ namespace PluginCoverShuffle.UI
 
             var view = new CoverShuffleManagerWindow(
                 viewModel, maintenanceService, dialogs, repository, storage, coverService, bulkConfigurationService, bulkShuffleService,
-                steamGridDbProvider, playniteMetadataProvider, importService, localFileCoverAddService, gameService, logger);
+                steamGridDbProvider, playniteMetadataProvider, importService, localFileCoverAddService, gameService,
+                uninstalledGameScanService, gameUninstallationService, logger);
 
             var window = dialogs.CreateWindow(new WindowCreationOptions
             {
@@ -244,13 +253,13 @@ namespace PluginCoverShuffle.UI
 
         private void SetIntervalButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!double.TryParse(IntervalBox.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var hours) || hours <= 0)
+            if (!IntervalHoursText.TryParse(IntervalBox.Text, CultureInfo.CurrentCulture, out var interval, out var error))
             {
-                _dialogs.ShowMessage("Enter a valid number of hours greater than zero.");
+                _dialogs.ShowMessage(error);
                 return;
             }
 
-            _viewModel.SetIntervalForSelected(TimeSpan.FromHours(hours));
+            _viewModel.SetIntervalForSelected(interval);
         }
 
         private void ExportButton_Click(object sender, RoutedEventArgs e) => _viewModel.Export();
@@ -259,7 +268,7 @@ namespace PluginCoverShuffle.UI
 
         private void MaintenanceButton_Click(object sender, RoutedEventArgs e)
         {
-            var maintenanceViewModel = new MaintenanceViewModel(_maintenanceService, _dialogs, _gameService);
+            var maintenanceViewModel = new MaintenanceViewModel(_maintenanceService, _dialogs, _gameService, _uninstalledGameScanService, _gameUninstallationService);
             new MaintenanceWindow(maintenanceViewModel) { Owner = _owningWindow }.ShowDialog();
             _viewModel.Reload();
         }

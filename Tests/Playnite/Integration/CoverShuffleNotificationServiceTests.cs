@@ -99,5 +99,36 @@ namespace PluginCoverShuffle.Tests.Playnite.Integration
             Assert.Equal(2, _notifications.AddedMessages.Count);
             Assert.Equal(_notifications.AddedMessages[0].Id, _notifications.AddedMessages[1].Id);
         }
+
+        [Theory]
+        [InlineData(NotificationPreference.NotifyOnShuffle)]
+        [InlineData(NotificationPreference.NotifyOnErrorOnly)]
+        public void NotifyUninstalledGamesWithCovers_WhenNotSilent_AddsInfoNotification(NotificationPreference preference)
+        {
+            _service.NotifyUninstalledGamesWithCovers(3, preference);
+
+            Assert.Single(_notifications.AddedMessages);
+            // Informational: nothing failed, the games just aren't installed anymore.
+            Assert.Equal(NotificationType.Info, _notifications.AddedMessages[0].Type);
+            Assert.Contains("3", _notifications.AddedMessages[0].Text);
+        }
+
+        [Fact]
+        public void NotifyUninstalledGamesWithCovers_WhenSilent_AddsNothing()
+        {
+            _service.NotifyUninstalledGamesWithCovers(3, NotificationPreference.Silent);
+
+            Assert.Empty(_notifications.AddedMessages);
+        }
+
+        [Fact]
+        public void NotifyUninstalledGamesWithCovers_CalledTwice_ReusesTheSameNotificationId()
+        {
+            _service.NotifyUninstalledGamesWithCovers(2, NotificationPreference.NotifyOnShuffle);
+            _service.NotifyUninstalledGamesWithCovers(5, NotificationPreference.NotifyOnShuffle);
+
+            Assert.Equal(2, _notifications.AddedMessages.Count);
+            Assert.Equal(_notifications.AddedMessages[0].Id, _notifications.AddedMessages[1].Id);
+        }
     }
 }

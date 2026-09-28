@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="clr-namespace:PluginCoverShuffle.UI"
-        Title="Cover Shuffle Maintenance" Height="640" Width="640" MinHeight="420" MinWidth="480"
+        Title="Cover Shuffle Maintenance" Height="640" Width="640" MinHeight="420" MinWidth="560"
         WindowStartupLocation="CenterOwner">
     <Window.Resources>
         <ResourceDictionary>
@@ -26,49 +26,59 @@
             <TextBlock Text="Scan and repair your Cover Shuffle library." Style="{StaticResource CoverShuffleMutedTextStyle}" Margin="0,2,0,0" />
         </StackPanel>
 
-        <!-- Health summary -->
-        <Border Grid.Row="1" Padding="14,10" CornerRadius="4" Margin="0,0,0,12"
-                Background="{DynamicResource TextBrush}" Opacity="0.05">
-            <StackPanel>
+        <!--
+            Health summary. The tint lives on its own Border BEHIND the
+            content Grid, not as this Border's own Opacity - WPF applies
+            Border.Opacity to the ENTIRE visual subtree (all child text,
+            not just the Background brush), which would make every stat
+            and warning here unreadable rather than just faintly tinted.
+        -->
+        <Grid Grid.Row="1" Margin="0,0,0,12">
+            <Border CornerRadius="4" Background="{DynamicResource TextBrush}" Opacity="0.05" />
+            <StackPanel Margin="14,10">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#10003; Library healthy" FontWeight="SemiBold" Style="{StaticResource CoverShuffleBodyTextStyle}"
                                Visibility="{Binding IsHealthy, Converter={StaticResource BoolToVisibilityConverter}}" />
                     <TextBlock Text="{Binding IssueCount, StringFormat='&#9888; {0} issue(s) need attention'}" FontWeight="SemiBold"
-                               Foreground="#FFC107"
+                               Foreground="{StaticResource CoverShuffleWarningBrush}"
                                Visibility="{Binding IsHealthy, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}" />
                 </StackPanel>
                 <WrapPanel Orientation="Horizontal" Margin="0,8,0,0" AutomationProperties.Name="Library statistics">
-                    <StackPanel Margin="0,0,24,0">
+                    <StackPanel Margin="0,0,24,0" AutomationProperties.Name="{Binding ManagedGamesCount, StringFormat='{}{0} managed games'}">
                         <TextBlock Text="{Binding ManagedGamesCount}" Style="{StaticResource CoverShuffleTitleTextStyle}" FontSize="16" />
                         <TextBlock Text="Managed games" Style="{StaticResource CoverShuffleSectionLabelTextStyle}" />
                     </StackPanel>
-                    <StackPanel Margin="0,0,24,0">
+                    <StackPanel Margin="0,0,24,0" AutomationProperties.Name="{Binding TotalCoversCount, StringFormat='{}{0} covers'}">
                         <TextBlock Text="{Binding TotalCoversCount}" Style="{StaticResource CoverShuffleTitleTextStyle}" FontSize="16" />
                         <TextBlock Text="Covers" Style="{StaticResource CoverShuffleSectionLabelTextStyle}" />
                     </StackPanel>
-                    <StackPanel Margin="0,0,24,0">
+                    <StackPanel Margin="0,0,24,0" AutomationProperties.Name="{Binding MissingFilesCount, StringFormat='{}{0} missing files'}">
                         <TextBlock Text="{Binding MissingFilesCount}" Style="{StaticResource CoverShuffleTitleTextStyle}" FontSize="16" />
                         <TextBlock Text="Missing files" Style="{StaticResource CoverShuffleSectionLabelTextStyle}" />
                     </StackPanel>
-                    <StackPanel Margin="0,0,24,0">
+                    <StackPanel Margin="0,0,24,0" AutomationProperties.Name="{Binding OrphanedFilesCount, StringFormat='{}{0} orphaned files'}">
                         <TextBlock Text="{Binding OrphanedFilesCount}" Style="{StaticResource CoverShuffleTitleTextStyle}" FontSize="16" />
                         <TextBlock Text="Orphaned files" Style="{StaticResource CoverShuffleSectionLabelTextStyle}" />
                     </StackPanel>
-                    <StackPanel Margin="0,0,24,0">
+                    <StackPanel Margin="0,0,24,0" AutomationProperties.Name="{Binding CacheFilesCount, StringFormat='{}{0} cache files'}">
                         <TextBlock Text="{Binding CacheFilesCount}" Style="{StaticResource CoverShuffleTitleTextStyle}" FontSize="16" />
                         <TextBlock Text="Cache files" Style="{StaticResource CoverShuffleSectionLabelTextStyle}" />
                     </StackPanel>
-                    <StackPanel Margin="0,0,24,0">
+                    <StackPanel Margin="0,0,24,0" AutomationProperties.Name="{Binding CoverStorageSizeText, StringFormat='{}{0} cover storage used'}">
                         <TextBlock Text="{Binding CoverStorageSizeText}" Style="{StaticResource CoverShuffleTitleTextStyle}" FontSize="16" />
                         <TextBlock Text="Cover storage" Style="{StaticResource CoverShuffleSectionLabelTextStyle}" />
                     </StackPanel>
-                    <StackPanel>
+                    <StackPanel Margin="0,0,24,0" AutomationProperties.Name="{Binding CacheStorageSizeText, StringFormat='{}{0} cache storage used'}">
                         <TextBlock Text="{Binding CacheStorageSizeText}" Style="{StaticResource CoverShuffleTitleTextStyle}" FontSize="16" />
                         <TextBlock Text="Cache storage" Style="{StaticResource CoverShuffleSectionLabelTextStyle}" />
                     </StackPanel>
+                    <StackPanel AutomationProperties.Name="{Binding UninstalledGamesCount, StringFormat='{}{0} uninstalled games'}">
+                        <TextBlock Text="{Binding UninstalledGamesCount}" Style="{StaticResource CoverShuffleTitleTextStyle}" FontSize="16" />
+                        <TextBlock Text="Uninstalled games" Style="{StaticResource CoverShuffleSectionLabelTextStyle}" />
+                    </StackPanel>
                 </WrapPanel>
             </StackPanel>
-        </Border>
+        </Grid>
 
         <!-- Empty state -->
         <StackPanel Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="360"
@@ -83,19 +93,22 @@
                       Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}">
             <StackPanel>
 
-                <!-- Missing cover files -->
-                <StackPanel Margin="0,0,0,16" Visibility="{Binding MissingFilesCount, Converter={StaticResource BoolToVisibilityConverter}}">
+                <!-- Missing cover files: tint on its own Border behind the content Grid, see the health-summary comment above for why. -->
+                <Grid Margin="0,0,0,12" Visibility="{Binding MissingFilesCount, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Border CornerRadius="4" Background="{DynamicResource TextBrush}" Opacity="0.05" />
+                    <StackPanel Margin="14,10">
                     <Grid Margin="0,0,0,6">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="{Binding MissingFilesCount, StringFormat='Missing cover files ({0})'}"
+                        <TextBlock Grid.Column="0" Text="{Binding MissingFilesCount, StringFormat='&#128196; Missing cover files ({0})'}"
                                    FontWeight="SemiBold" Style="{StaticResource CoverShuffleBodyTextStyle}" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Content="Select all" Padding="8,3" Margin="0,0,6,0" Click="SelectAllMissingButton_Click" />
-                        <Button Grid.Column="2" Content="{Binding SelectedMissingCount, StringFormat='Remove selected ({0})'}" Padding="8,3"
-                                Click="RemoveMissingButton_Click" />
+                        <Button Grid.Column="1" Content="_Select all" Style="{StaticResource CoverShuffleButtonStyle}" Click="SelectAllMissingButton_Click" />
+                        <Button Grid.Column="2" Content="{Binding SelectedMissingCount, StringFormat='_Remove selected ({0})'}"
+                                Style="{StaticResource CoverShuffleDangerButtonStyle}" Margin="0,0,0,6"
+                                IsEnabled="{Binding CanRemoveSelectedMissing}" Click="RemoveMissingButton_Click" />
                     </Grid>
                     <ItemsControl ItemsSource="{Binding MissingCoverItems}">
                         <ItemsControl.ItemTemplate>
@@ -109,7 +122,7 @@
                                         <CheckBox Grid.Column="0" VerticalAlignment="Top" Margin="0,2,10,0" IsChecked="{Binding IsSelected, Mode=TwoWay}"
                                                   AutomationProperties.Name="{Binding GameName, StringFormat='Select issue for {0}'}" />
                                         <StackPanel Grid.Column="1">
-                                            <TextBlock Text="{Binding GameName, StringFormat='&#9888; {0}'}" FontWeight="SemiBold" Foreground="#FFC107"
+                                            <TextBlock Text="{Binding GameName, StringFormat='&#9888; {0}'}" FontWeight="SemiBold" Foreground="{StaticResource CoverShuffleWarningBrush}"
                                                        Style="{StaticResource CoverShuffleBodyTextStyle}" TextWrapping="Wrap" />
                                             <TextBlock Text="{Binding Subtitle}" Style="{StaticResource CoverShuffleMutedTextStyle}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                         </StackPanel>
@@ -118,21 +131,25 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                </StackPanel>
+                    </StackPanel>
+                </Grid>
 
-                <!-- Orphaned files -->
-                <StackPanel Margin="0,0,0,16" Visibility="{Binding OrphanedFilesCount, Converter={StaticResource BoolToVisibilityConverter}}">
+                <!-- Orphaned files: tint on its own Border behind the content Grid, see the health-summary comment above for why. -->
+                <Grid Margin="0,0,0,12" Visibility="{Binding OrphanedFilesCount, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Border CornerRadius="4" Background="{DynamicResource TextBrush}" Opacity="0.05" />
+                    <StackPanel Margin="14,10">
                     <Grid Margin="0,0,0,6">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="{Binding OrphanedFilesCount, StringFormat='Orphaned files ({0})'}"
+                        <TextBlock Grid.Column="0" Text="{Binding OrphanedFilesCount, StringFormat='&#128465; Orphaned files ({0})'}"
                                    FontWeight="SemiBold" Style="{StaticResource CoverShuffleBodyTextStyle}" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Content="Select all" Padding="8,3" Margin="0,0,6,0" Click="SelectAllOrphanedButton_Click" />
-                        <Button Grid.Column="2" Content="{Binding SelectedOrphanedCount, StringFormat='Delete selected ({0})'}" Padding="8,3"
-                                Click="DeleteOrphanedButton_Click" />
+                        <Button Grid.Column="1" Content="_Select all" Style="{StaticResource CoverShuffleButtonStyle}" Click="SelectAllOrphanedButton_Click" />
+                        <Button Grid.Column="2" Content="{Binding SelectedOrphanedCount, StringFormat='_Delete selected ({0})'}"
+                                Style="{StaticResource CoverShuffleDangerButtonStyle}" Margin="0,0,0,6"
+                                IsEnabled="{Binding CanDeleteSelectedOrphaned}" Click="DeleteOrphanedButton_Click" />
                     </Grid>
                     <ItemsControl ItemsSource="{Binding OrphanedFileItems}">
                         <ItemsControl.ItemTemplate>
@@ -146,7 +163,7 @@
                                         <CheckBox Grid.Column="0" VerticalAlignment="Top" Margin="0,2,10,0" IsChecked="{Binding IsSelected, Mode=TwoWay}"
                                                   AutomationProperties.Name="{Binding GameName, StringFormat='Select issue for {0}'}" />
                                         <StackPanel Grid.Column="1">
-                                            <TextBlock Text="{Binding GameName, StringFormat='&#9888; {0}'}" FontWeight="SemiBold" Foreground="#FFC107"
+                                            <TextBlock Text="{Binding GameName, StringFormat='&#9888; {0}'}" FontWeight="SemiBold" Foreground="{StaticResource CoverShuffleWarningBrush}"
                                                        Style="{StaticResource CoverShuffleBodyTextStyle}" TextWrapping="Wrap" />
                                             <TextBlock Text="{Binding Subtitle}" Style="{StaticResource CoverShuffleMutedTextStyle}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                             <TextBlock Text="{Binding FilePath}" Style="{StaticResource CoverShuffleMutedTextStyle}" TextWrapping="Wrap"
@@ -157,21 +174,25 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                </StackPanel>
+                    </StackPanel>
+                </Grid>
 
-                <!-- Cache files -->
-                <StackPanel Margin="0,0,0,4" Visibility="{Binding CacheFilesCount, Converter={StaticResource BoolToVisibilityConverter}}">
+                <!-- Cache files: tint on its own Border behind the content Grid, see the health-summary comment above for why. -->
+                <Grid Margin="0,0,0,12" Visibility="{Binding CacheFilesCount, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Border CornerRadius="4" Background="{DynamicResource TextBrush}" Opacity="0.05" />
+                    <StackPanel Margin="14,10">
                     <Grid Margin="0,0,0,6">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="{Binding CacheFilesCount, StringFormat='Cache files ({0})'}"
+                        <TextBlock Grid.Column="0" Text="{Binding CacheFilesCount, StringFormat='&#128190; Cache files ({0})'}"
                                    FontWeight="SemiBold" Style="{StaticResource CoverShuffleBodyTextStyle}" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Content="Select all" Padding="8,3" Margin="0,0,6,0" Click="SelectAllCacheButton_Click" />
-                        <Button Grid.Column="2" Content="{Binding SelectedCacheCount, StringFormat='Delete selected ({0})'}" Padding="8,3"
-                                Click="DeleteCacheButton_Click" />
+                        <Button Grid.Column="1" Content="_Select all" Style="{StaticResource CoverShuffleButtonStyle}" Click="SelectAllCacheButton_Click" />
+                        <Button Grid.Column="2" Content="{Binding SelectedCacheCount, StringFormat='_Delete selected ({0})'}"
+                                Style="{StaticResource CoverShuffleDangerButtonStyle}" Margin="0,0,0,6"
+                                IsEnabled="{Binding CanDeleteSelectedCache}" Click="DeleteCacheButton_Click" />
                     </Grid>
                     <ItemsControl ItemsSource="{Binding CacheFileItems}">
                         <ItemsControl.ItemTemplate>
@@ -194,7 +215,49 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                </StackPanel>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Uninstalled games: tint on its own Border behind the content Grid, see the health-summary comment above for why. -->
+                <Grid Margin="0,0,0,4" Visibility="{Binding UninstalledGamesCount, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Border CornerRadius="4" Background="{DynamicResource TextBrush}" Opacity="0.05" />
+                    <StackPanel Margin="14,10">
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding UninstalledGamesCount, StringFormat='&#127918; Uninstalled games ({0})'}"
+                                   FontWeight="SemiBold" Style="{StaticResource CoverShuffleBodyTextStyle}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="_Select all" Style="{StaticResource CoverShuffleButtonStyle}" Click="SelectAllUninstalledButton_Click" />
+                        <Button Grid.Column="2" Content="{Binding SelectedUninstalledGamesCount, StringFormat='_Restore &amp; remove selected ({0})'}"
+                                Style="{StaticResource CoverShuffleRestorativeButtonStyle}" Margin="0,0,0,6"
+                                IsEnabled="{Binding CanRestoreSelectedUninstalled}" Click="RestoreAndRemoveUninstalledButton_Click" />
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding UninstalledGameItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderThickness="1" BorderBrush="{DynamicResource TextBrush}" Opacity="0.9" CornerRadius="4" Padding="10,8" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox Grid.Column="0" VerticalAlignment="Top" Margin="0,2,10,0" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                  AutomationProperties.Name="{Binding GameName, StringFormat='Select issue for {0}'}" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding GameName, StringFormat='&#9888; {0}'}" FontWeight="SemiBold" Foreground="{StaticResource CoverShuffleWarningBrush}"
+                                                       Style="{StaticResource CoverShuffleBodyTextStyle}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource CoverShuffleMutedTextStyle}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    </StackPanel>
+                </Grid>
 
             </StackPanel>
         </ScrollViewer>
@@ -207,7 +270,7 @@
             </Grid.ColumnDefinitions>
             <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" Style="{StaticResource CoverShuffleMutedTextStyle}" VerticalAlignment="Center"
                        TextWrapping="Wrap" Visibility="{Binding StatusMessage, Converter={StaticResource BoolToVisibilityConverter}}" />
-            <Button Grid.Column="1" Content="Rescan" Padding="10,4" Click="RescanButton_Click" />
+            <Button Grid.Column="1" Content="Re_scan" Style="{StaticResource CoverShuffleButtonStyle}" Click="RescanButton_Click" />
         </Grid>
     </Grid>
 </Window>

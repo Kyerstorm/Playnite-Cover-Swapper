@@ -26,6 +26,10 @@ namespace PluginCoverShuffle.UI
 
         private void DeleteCacheButton_Click(object sender, RoutedEventArgs e) => _viewModel.DeleteSelectedCacheFiles();
 
+        private void SelectAllUninstalledButton_Click(object sender, RoutedEventArgs e) => _viewModel.SelectAllUninstalledGames(true);
+
+        private void RestoreAndRemoveUninstalledButton_Click(object sender, RoutedEventArgs e) => _viewModel.RestoreAndRemoveSelectedUninstalledGames();
+
         private void RescanButton_Click(object sender, RoutedEventArgs e) => _viewModel.Scan();
     }
 }

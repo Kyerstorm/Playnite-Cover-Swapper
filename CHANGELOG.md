@@ -11,6 +11,17 @@ section in `README.md` for what bumps each part.
 
 ## [Unreleased]
 
+### Added
+
+- Maintenance now scans for managed games (games with at least one stored
+  cover) that Playnite currently reports as not installed, surfaced as a
+  fourth card in the Maintenance window. Confirming selected candidates
+  restores each game's original Playnite cover first and only removes Cover
+  Shuffle's own data once that restore is verified — the same cleanup
+  already run automatically by Playnite's uninstall event. This scan also
+  runs once at Playnite startup and raises a notification (subject to your
+  notification preference) when it finds candidates.
+
 ### Fixed
 
 - Database saves now use a crash-safe file replace instead of a

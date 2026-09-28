@@ -105,9 +105,12 @@
             </StackPanel>
 
             <!-- Per-selection action bar: appears only when exactly one cover is selected, so cards themselves never need nested buttons. -->
-            <Border Margin="0,10,0,0" Padding="10,8" CornerRadius="4" Background="{DynamicResource TextBrush}" Opacity="0.06"
-                    Visibility="{Binding ShowSingleSelectionBar, Converter={StaticResource BoolToVisibilityConverter}}">
-                <StackPanel Orientation="Horizontal">
+            <!-- The tint is a self-closing sibling Border: WPF Opacity applies to a whole subtree, so putting it on a
+                 Border that wraps the buttons would render the buttons themselves at 6% (effectively invisible). -->
+            <Grid Margin="0,10,0,0"
+                  Visibility="{Binding ShowSingleSelectionBar, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Border CornerRadius="4" Background="{DynamicResource TextBrush}" Opacity="0.06" />
+                <StackPanel Orientation="Horizontal" Margin="10,8">
                     <TextBlock Text="Selected cover:" Foreground="{DynamicResource TextBrush}" Opacity="0.75" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <Button Content="Set as Current" Padding="8,4" Margin="0,0,6,0" Click="UseSelectedCoverButton_Click"
                             IsEnabled="{Binding CanApplySelectedCover}" />
@@ -117,12 +120,13 @@
                             Visibility="{Binding CanRestoreSelectedFromSteamGridDb, Converter={StaticResource BoolToVisibilityConverter}}" />
                     <Button Content="Remove from Pool" Padding="8,4" Click="RemoveSelectedCoverButton_Click" />
                 </StackPanel>
-            </Border>
+            </Grid>
 
             <!-- Multi-select contextual action bar: only actions that make sense for the whole checked set. -->
-            <Border Margin="0,10,0,0" Padding="10,8" CornerRadius="4" Background="{DynamicResource TextBrush}" Opacity="0.06"
-                    Visibility="{Binding HasMultipleSelectedCovers, Converter={StaticResource BoolToVisibilityConverter}}">
-                <StackPanel Orientation="Horizontal">
+            <Grid Margin="0,10,0,0"
+                  Visibility="{Binding HasMultipleSelectedCovers, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Border CornerRadius="4" Background="{DynamicResource TextBrush}" Opacity="0.06" />
+                <StackPanel Orientation="Horizontal" Margin="10,8">
                     <TextBlock Text="{Binding SelectedCoverCount, StringFormat='{}{0} covers selected:'}"
                                Foreground="{DynamicResource TextBrush}" Opacity="0.75" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <Button Content="Enable" Padding="8,4" Margin="0,0,6,0" Click="EnableSelectedCoversButton_Click"
@@ -132,7 +136,7 @@
                     <Button Content="Remove from Pool" Padding="8,4" Click="RemoveSelectedCoversButton_Click"
                             Visibility="{Binding CanRemoveSelectedCovers, Converter={StaticResource BoolToVisibilityConverter}}" />
                 </StackPanel>
-            </Border>
+            </Grid>
 
             <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource CoverShuffleBodyTextStyle}" Opacity="0.8" Margin="0,8,0,0"
                        Visibility="{Binding StatusMessage, Converter={StaticResource BoolToVisibilityConverter}}" />
